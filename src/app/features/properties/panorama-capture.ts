@@ -33,7 +33,7 @@ import { HttpClient } from '@angular/common/http';
         </button>
       </div>
 
-      <!-- Step 1: Permissions -->
+      <!-- Step 1: Permissions / Mode Selection -->
       <div class="step-card glass-panel" *ngIf="step() === 'permission'">
         <div class="intro-content">
           <span class="material-symbols-outlined large-icon glow-text-green">settings_motion</span>
@@ -58,13 +58,29 @@ import { HttpClient } from '@angular/common/http';
           <button mat-raised-button color="accent" class="grant-btn btn-interactive glow-border-green" (click)="grantPermissions()">
             Enable Sensors & Camera
           </button>
+          
+          <button mat-button class="simulation-btn btn-interactive" style="margin-top: 12px; color: var(--accent-primary);" (click)="startSimulationMode()">
+            <mat-icon>terminal</mat-icon>
+            Start Simulator Mode (Testing Fallback)
+          </button>
         </div>
       </div>
 
       <!-- Step 2: Camera Capture Viewfinder -->
       <div class="viewfinder-container" *ngIf="step() === 'capturing'">
         <!-- Live Video Element -->
-        <video #videoElement autoplay playsinline muted></video>
+        <video #videoElement *ngIf="!isSimulated()" autoplay playsinline muted></video>
+
+        <!-- Simulated Visual Backdrop for testing / HTTP insecure contexts -->
+        <div class="simulated-backdrop" *ngIf="isSimulated()">
+          <div class="sky-zone" [style.transform]="getSimulatedSkyTransform()"></div>
+          <div class="ground-zone" [style.transform]="getSimulatedGroundTransform()"></div>
+          <div class="horizon-line"></div>
+          <div class="simulation-badge">
+            <mat-icon>terminal</mat-icon>
+            <span>SIMULATOR ACTIVE - Use keyboard ARROWS or HUD buttons to rotate</span>
+          </div>
+        </div>
 
         <!-- Dynamic Screen Flash -->
         <div class="screen-flash" [class.flash-active]="triggerFlash()"></div>
@@ -75,7 +91,8 @@ import { HttpClient } from '@angular/common/http';
                *ngFor="let target of targets()"
                [ngClass]="{
                  'completed': target.completed,
-                 'active': target.id === activeTarget()?.id
+                 'active': target.id === activeTarget()?.id,
+                 'clamped': isTargetClamped(target)
                }"
                [ngStyle]="getDotStyle(target)">
             <span class="dot-inner"></span>
@@ -115,6 +132,24 @@ import { HttpClient } from '@angular/common/http';
               (Target: {{ activeTarget()?.yaw || 0 }}° / {{ activeTarget()?.pitch || 0 }}°)
             </span>
           </div>
+        </div>
+
+        <!-- Simulator Rotation HUD buttons for mobile/touch users -->
+        <div class="simulator-hud-controls" *ngIf="isSimulated()">
+          <button type="button" mat-mini-fab class="sim-hud-btn btn-interactive" (click)="rotateSimulated(0, 3)" title="Tilt Up">
+            <mat-icon>arrow_upward</mat-icon>
+          </button>
+          <div class="middle-row">
+            <button type="button" mat-mini-fab class="sim-hud-btn btn-interactive" (click)="rotateSimulated(-10, 0)" title="Rotate Left">
+              <mat-icon>arrow_back</mat-icon>
+            </button>
+            <button type="button" mat-mini-fab class="sim-hud-btn btn-interactive" (click)="rotateSimulated(10, 0)" title="Rotate Right">
+              <mat-icon>arrow_forward</mat-icon>
+            </button>
+          </div>
+          <button type="button" mat-mini-fab class="sim-hud-btn btn-interactive" (click)="rotateSimulated(0, -3)" title="Tilt Down">
+            <mat-icon>arrow_downward</mat-icon>
+          </button>
         </div>
 
         <!-- Viewfinder Actions Footer -->
@@ -265,6 +300,93 @@ import { HttpClient } from '@angular/common/http';
         z-index: 1;
       }
     }
+    .simulated-backdrop {
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle, #0f172a, #020617);
+      z-index: 1;
+      overflow: hidden;
+      .sky-zone {
+        position: absolute;
+        width: 200%;
+        height: 100%;
+        top: 0;
+        left: -50%;
+        background: linear-gradient(180deg, #070f1e 0%, #1e3a8a 100%);
+        border-bottom: 2px solid var(--accent-primary);
+        opacity: 0.85;
+        transition: transform 0.1s ease-out;
+      }
+      .ground-zone {
+        position: absolute;
+        width: 200%;
+        height: 50%;
+        bottom: 0;
+        left: -50%;
+        background: repeating-linear-gradient(45deg, #0f172a, #0f172a 20px, #1e293b 20px, #1e293b 40px);
+        opacity: 0.9;
+        transition: transform 0.1s ease-out;
+      }
+      .horizon-line {
+        position: absolute;
+        top: 50%;
+        left: 0;
+        right: 0;
+        height: 2px;
+        background: rgba(255,255,255,0.2);
+        z-index: 2;
+      }
+      .simulation-badge {
+        position: absolute;
+        top: 88px;
+        left: 50%;
+        transform: translateX(-50%);
+        padding: 6px 12px;
+        background: rgba(2, 132, 199, 0.2);
+        border: 1px solid rgba(2, 132, 199, 0.5);
+        color: var(--accent-primary);
+        border-radius: 4px;
+        font-size: 0.75rem;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-weight: 600;
+        z-index: 3;
+        white-space: nowrap;
+        mat-icon { font-size: 16px; width: 16px; height: 16px; }
+      }
+    }
+    .simulator-hud-controls {
+      position: absolute;
+      bottom: 100px;
+      right: 16px;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      background: rgba(15,23,42,0.85);
+      padding: 8px;
+      border-radius: 8px;
+      border: 1px solid rgba(255,255,255,0.08);
+      .middle-row {
+        display: flex;
+        gap: 6px;
+      }
+      .sim-hud-btn {
+        width: 36px;
+        height: 36px;
+        background: #1e293b;
+        color: #fff;
+        border: 1px solid rgba(255,255,255,0.1);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 0;
+        padding: 0;
+        mat-icon { font-size: 20px; width: 20px; height: 20px; }
+      }
+    }
     .screen-flash {
       position: absolute;
       inset: 0;
@@ -294,6 +416,7 @@ import { HttpClient } from '@angular/common/http';
         background: rgba(148, 163, 184, 0.4); /* remaining gray */
         border: 2px solid #94a3b8;
         box-shadow: 0 0 8px rgba(0,0,0,0.5);
+        transition: background-color 0.2s, border-color 0.2s;
       }
       .dot-label {
         position: absolute;
@@ -318,6 +441,13 @@ import { HttpClient } from '@angular/common/http';
           border-color: #0ea5e9;
           box-shadow: 0 0 12px #0ea5e9;
           animation: pulse 1s infinite alternate;
+        }
+        &.clamped {
+          .dot-inner {
+            background: rgba(249, 115, 22, 0.6) !important; /* clamped orange */
+            border-color: #f97316 !important;
+            box-shadow: 0 0 12px #f97316 !important;
+          }
         }
       }
     }
@@ -513,6 +643,7 @@ export class PanoramaCaptureComponent implements OnInit, OnDestroy {
   readonly step = signal<'permission' | 'capturing' | 'stitching' | 'preview'>('permission');
   readonly cameraPermStatus = signal<boolean>(false);
   readonly sensorPermStatus = signal<boolean>(false);
+  readonly isSimulated = signal<boolean>(false);
   
   // Viewfinder live data
   readonly targets = this.panoramaService.targets;
@@ -571,14 +702,28 @@ export class PanoramaCaptureComponent implements OnInit, OnDestroy {
       this.sensorPermStatus.set(sensorOk);
 
       if (stream && sensorOk) {
+        this.isSimulated.set(false);
         this.step.set('capturing');
         setTimeout(() => this.bindVideoAndSensors(), 200);
       } else {
-        this.snackBar.open('Both camera and orientation sensor permissions are required.', 'Dismiss', { duration: 3000 });
+        this.snackBar.open('Camera or orientation sensor blocked. Launching Simulator.', 'Dismiss', { duration: 3000 });
+        this.startSimulationMode();
       }
     } catch (err: any) {
-      this.snackBar.open(err.message || 'Permission denied.', 'Dismiss', { duration: 3000 });
+      this.snackBar.open('Insecure context or blocked permissions. Launching Simulator.', 'Dismiss', { duration: 4000 });
+      this.startSimulationMode();
     }
+  }
+
+  startSimulationMode(): void {
+    this.isSimulated.set(true);
+    this.cameraPermStatus.set(true);
+    this.sensorPermStatus.set(true);
+    this.step.set('capturing');
+    setTimeout(() => {
+      // Bind key inputs for simulation rotation
+      window.addEventListener('keydown', this.onKeyDownSimulation);
+    }, 200);
   }
 
   private bindVideoAndSensors(): void {
@@ -592,7 +737,7 @@ export class PanoramaCaptureComponent implements OnInit, OnDestroy {
   }
 
   private onOrientationUpdate = (event: DeviceOrientationEvent) => {
-    if (this.step() !== 'capturing') return;
+    if (this.step() !== 'capturing' || this.isSimulated()) return;
 
     const yaw = Math.round(event.alpha || 0);
     const pitch = Math.round(event.beta || 0);
@@ -630,10 +775,56 @@ export class PanoramaCaptureComponent implements OnInit, OnDestroy {
     }
   };
 
-  private executeFrameCapture(): void {
-    const video = this.videoElement()?.nativeElement;
-    if (!video) return;
+  private onKeyDownSimulation = (event: KeyboardEvent) => {
+    if (this.step() !== 'capturing' || !this.isSimulated()) return;
 
+    if (event.key === 'ArrowLeft') {
+      this.rotateSimulated(-10, 0);
+      event.preventDefault();
+    } else if (event.key === 'ArrowRight') {
+      this.rotateSimulated(10, 0);
+      event.preventDefault();
+    } else if (event.key === 'ArrowUp') {
+      this.rotateSimulated(0, 3);
+      event.preventDefault();
+    } else if (event.key === 'ArrowDown') {
+      this.rotateSimulated(0, -3);
+      event.preventDefault();
+    }
+  };
+
+  rotateSimulated(dYaw: number, dPitch: number): void {
+    let yaw = (this.currentYaw() + dYaw + 360) % 360;
+    let pitch = Math.max(-90, Math.min(90, this.currentPitch() + dPitch));
+
+    this.currentYaw.set(yaw);
+    this.currentPitch.set(pitch);
+
+    const active = this.activeTarget();
+    if (!active) return;
+
+    const guide = this.panoramaService.getInstructions(yaw, pitch);
+    this.guidanceText.set(guide.text);
+    this.isAligned.set(guide.aligned);
+
+    // Auto capture when aligned
+    if (guide.aligned) {
+      if (!this.alignLocked) {
+        this.alignLocked = true;
+        this.autoCaptureTimeout = setTimeout(() => {
+          this.executeFrameCapture();
+        }, 400);
+      }
+    } else {
+      this.alignLocked = false;
+      if (this.autoCaptureTimeout) {
+        clearTimeout(this.autoCaptureTimeout);
+        this.autoCaptureTimeout = null;
+      }
+    }
+  }
+
+  private executeFrameCapture(): void {
     try {
       // 1. Flash effect
       this.triggerFlash.set(true);
@@ -645,7 +836,16 @@ export class PanoramaCaptureComponent implements OnInit, OnDestroy {
       }
 
       // 3. Take snapshot and mark target completed
-      const frameData = this.cameraService.captureFrame(video);
+      let frameData = '';
+      if (this.isSimulated()) {
+        frameData = this.generateSimulatedFrame(this.currentYaw(), this.currentPitch(), this.completedCount() + 1);
+      } else {
+        const video = this.videoElement()?.nativeElement;
+        if (video) {
+          frameData = this.cameraService.captureFrame(video);
+        }
+      }
+
       this.panoramaService.completeActiveTarget(frameData);
 
       // 4. Update progress
@@ -663,6 +863,41 @@ export class PanoramaCaptureComponent implements OnInit, OnDestroy {
       console.error('Frame capture failed:', err);
       this.alignLocked = false;
     }
+  }
+
+  private generateSimulatedFrame(yaw: number, pitch: number, index: number): string {
+    const canvas = document.createElement('canvas');
+    canvas.width = 640;
+    canvas.height = 480;
+    const ctx = canvas.getContext('2d');
+    if (ctx) {
+      // Sky/Ground gradient
+      const grad = ctx.createLinearGradient(0, 0, 0, 480);
+      grad.addColorStop(0, '#0284c7');
+      grad.addColorStop(0.5, '#bae6fd');
+      grad.addColorStop(0.51, '#cbd5e1');
+      grad.addColorStop(1, '#64748b');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, 640, 480);
+
+      // Print details
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 24px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(`LandLens Virtual Tour Simulation`, 320, 200);
+
+      ctx.fillStyle = '#0f172a';
+      ctx.font = '20px sans-serif';
+      ctx.fillText(`Frame #${index} | Yaw: ${yaw}° | Pitch: ${pitch}°`, 320, 260);
+
+      // Draw boundary grid
+      ctx.strokeStyle = 'rgba(255,255,255,0.4)';
+      ctx.lineWidth = 4;
+      ctx.strokeRect(20, 20, 600, 440);
+
+      return canvas.toDataURL('image/jpeg', 0.85);
+    }
+    return '';
   }
 
   manualCapture(): void {
@@ -733,7 +968,13 @@ export class PanoramaCaptureComponent implements OnInit, OnDestroy {
     this.stitchedImageUrl.set(null);
     this.step.set('capturing');
     this.alignLocked = false;
-    setTimeout(() => this.bindVideoAndSensors(), 200);
+    setTimeout(() => {
+      if (this.isSimulated()) {
+        this.startSimulationMode();
+      } else {
+        this.bindVideoAndSensors();
+      }
+    }, 200);
   }
 
   exitCapture(): void {
@@ -744,6 +985,8 @@ export class PanoramaCaptureComponent implements OnInit, OnDestroy {
   getDotStyle(target: CaptureTarget) {
     const yaw = this.currentYaw();
     const pitch = this.currentPitch();
+    const active = this.activeTarget();
+    const isActive = active?.id === target.id;
 
     let dYaw = target.yaw - yaw;
     if (dYaw > 180) dYaw -= 360;
@@ -751,14 +994,21 @@ export class PanoramaCaptureComponent implements OnInit, OnDestroy {
 
     const dPitch = target.pitch - pitch;
 
-    // Relative FOV degrees mapped to screen viewport limits
+    // Viewport field of view: 60 deg horizontal, 40 deg vertical
     const fovX = 60;
     const fovY = 40;
 
-    const x = 50 + (dYaw / (fovX / 2)) * 50;
-    const y = 50 - (dPitch / (fovY / 2)) * 50;
+    let x = 50 + (dYaw / (fovX / 2)) * 50;
+    let y = 50 - (dPitch / (fovY / 2)) * 50;
 
-    const isVisible = x >= 0 && x <= 100 && y >= 0 && y <= 100;
+    let isVisible = x >= 0 && x <= 100 && y >= 0 && y <= 100;
+
+    if (isActive && !isVisible) {
+      // Clamp active target dot to viewport boundaries so it acts as a rotation compass pointer
+      x = Math.max(5, Math.min(95, x));
+      y = Math.max(5, Math.min(95, y));
+      isVisible = true;
+    }
 
     return {
       left: `${x}%`,
@@ -767,8 +1017,48 @@ export class PanoramaCaptureComponent implements OnInit, OnDestroy {
     };
   }
 
+  isTargetClamped(target: CaptureTarget): boolean {
+    const active = this.activeTarget();
+    if (active?.id !== target.id) return false;
+
+    const yaw = this.currentYaw();
+    const pitch = this.currentPitch();
+
+    let dYaw = target.yaw - yaw;
+    if (dYaw > 180) dYaw -= 360;
+    if (dYaw < -180) dYaw += 360;
+
+    const dPitch = target.pitch - pitch;
+
+    const fovX = 60;
+    const fovY = 40;
+
+    const x = 50 + (dYaw / (fovX / 2)) * 50;
+    const y = 50 - (dPitch / (fovY / 2)) * 50;
+
+    return x < 0 || x > 100 || y < 0 || y > 100;
+  }
+
+  getSimulatedSkyTransform(): string {
+    const yaw = this.currentYaw();
+    const pitch = this.currentPitch();
+    // Offset background mapping to simulate yaw-rotation and pitch-tilting
+    const xOffset = yaw * -4; // 4px per degree horizontal
+    const yOffset = pitch * 3;  // 3px per degree vertical
+    return `translate(${xOffset}px, ${yOffset}px)`;
+  }
+
+  getSimulatedGroundTransform(): string {
+    const yaw = this.currentYaw();
+    const pitch = this.currentPitch();
+    const xOffset = yaw * -4;
+    const yOffset = pitch * 3;
+    return `translate(${xOffset}px, ${yOffset}px)`;
+  }
+
   private cleanupSensorsAndVideo(): void {
     window.removeEventListener('deviceorientation', this.onOrientationUpdate);
+    window.removeEventListener('keydown', this.onKeyDownSimulation);
     if (this.autoCaptureTimeout) {
       clearTimeout(this.autoCaptureTimeout);
       this.autoCaptureTimeout = null;
