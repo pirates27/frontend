@@ -34,6 +34,14 @@ export const routes: Routes = [
         loadComponent: () => import('./features/dashboard/buyer-dashboard/buyer-dashboard').then((m) => m.BuyerDashboardComponent),
       },
       {
+        path: 'saved',
+        loadComponent: () => import('./features/dashboard/buyer-dashboard/buyer-saved').then((m) => m.BuyerSavedComponent),
+      },
+      {
+        path: 'visits',
+        loadComponent: () => import('./features/dashboard/buyer-dashboard/buyer-visits').then((m) => m.BuyerVisitsComponent),
+      },
+      {
         path: 'profile',
         loadComponent: () => import('./features/profile/profile').then((m) => m.ProfileComponent),
       },
@@ -63,12 +71,24 @@ export const routes: Routes = [
         loadComponent: () => import('./features/dashboard/provider-dashboard/provider-dashboard').then((m) => m.ProviderDashboardComponent),
       },
       {
+        path: 'visits',
+        loadComponent: () => import('./features/dashboard/provider-dashboard/provider-visits').then((m) => m.ProviderVisitsComponent),
+      },
+      {
+        path: 'api-keys',
+        loadComponent: () => import('./features/dashboard/provider-dashboard/provider-api-keys').then((m) => m.ProviderApiKeysComponent),
+      },
+      {
         path: 'profile',
         loadComponent: () => import('./features/profile/profile').then((m) => m.ProfileComponent),
       },
       {
         path: 'notifications',
         loadComponent: () => import('./features/notifications/notifications').then((m) => m.NotificationsComponent),
+      },
+      {
+        path: 'ai-chat',
+        loadComponent: () => import('./features/ai-chat/chat-assistant/chat-assistant').then((m) => m.ChatAssistantComponent),
       },
       {
         path: 'properties/create',

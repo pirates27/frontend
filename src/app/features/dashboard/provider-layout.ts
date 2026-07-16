@@ -55,7 +55,7 @@ import { interval, Subscription } from 'rxjs';
         <mat-icon>home</mat-icon>
         <span>My Lands</span>
       </a>
-      <a mat-button routerLink="/dashboard/provider" [queryParams]="{ tab: 'visits' }" routerLinkActive="active">
+      <a mat-button routerLink="/dashboard/provider/visits" routerLinkActive="active">
         <mat-icon>event</mat-icon>
         <span>Visits</span>
       </a>
@@ -65,11 +65,11 @@ import { interval, Subscription } from 'rxjs';
         <mat-icon>add</mat-icon>
       </button>
 
-      <a mat-button routerLink="/dashboard/provider" [queryParams]="{ tab: 'developer' }" routerLinkActive="active">
+      <a mat-button routerLink="/dashboard/provider/api-keys" routerLinkActive="active">
         <mat-icon>api</mat-icon>
         <span>API Keys</span>
       </a>
-      <a mat-button routerLink="/dashboard/provider" [queryParams]="{ tab: 'chat' }" routerLinkActive="active">
+      <a mat-button routerLink="/dashboard/provider/ai-chat" routerLinkActive="active">
         <mat-icon>contact_support</mat-icon>
         <span>Support</span>
       </a>

@@ -228,6 +228,42 @@ a {
   color: var(--text-primary) !important;
 }
 
+/* Material Select Panel Overrides to fix transparent backgrounds */
+.mat-mdc-select-panel {
+  background-color: var(--bg-primary) !important;
+  border: 1px solid var(--border-color) !important;
+  border-radius: 12px !important;
+  box-shadow: var(--shadow-premium) !important;
+  padding: 6px 0 !important;
+}
+
+.mat-mdc-option {
+  color: var(--text-primary) !important;
+  font-family: var(--font-body) !important;
+  
+  .mdc-list-item__primary-text {
+    color: inherit !important;
+  }
+  
+  &:hover:not(.mdc-list-item--disabled),
+  &.mat-mdc-option-active:not(.mdc-list-item--disabled) {
+    background-color: var(--bg-tertiary) !important;
+  }
+  
+  &.mdc-list-item--selected:not(.mdc-list-item--disabled) {
+    background-color: rgba(5, 150, 105, 0.08) !important;
+    color: var(--accent-primary) !important;
+    
+    .mdc-list-item__primary-text {
+      color: var(--accent-primary) !important;
+    }
+    
+    &:hover {
+      background-color: rgba(5, 150, 105, 0.12) !important;
+    }
+  }
+}
+
 .mat-mdc-dialog-container .mdc-dialog__surface {
   background-color: var(--bg-secondary) !important;
   border: 1px solid var(--border-color) !important;
