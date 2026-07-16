@@ -19,7 +19,7 @@ export type Matrix3 = [
 
 /**
  * Converts spherical coordinates (yaw = heading, pitch = tilt) to a normalized 3D unit vector in Cartesian space.
- * Follows right-handed system convention where:
+ * Follows standard convention where:
  * - Forward (yaw = 0, pitch = 0) points along the negative Z-axis.
  * - Right points along the positive X-axis.
  * - Up points along the positive Y-axis.
@@ -37,22 +37,24 @@ export function sphericalToVector3(yawDeg: number, pitchDeg: number): Vector3 {
 
 /**
  * Converts Browser DeviceOrientation Euler angles (alpha, beta, gamma)
- * into a Unit Quaternion using the intrinsic Z-X'-Y'' sequence spec.
+ * into a Unit Quaternion using the official W3C intrinsic 'YXZ' (Z-X'-Y'') rotation sequence.
  */
 export function eulerToQuaternion(alphaDeg: number, betaDeg: number, gammaDeg: number): Quaternion {
-  const alpha = (alphaDeg * Math.PI / 180) / 2;
-  const beta = (betaDeg * Math.PI / 180) / 2;
-  const gamma = (gammaDeg * Math.PI / 180) / 2;
+  // Convert Tait-Bryan angles to radians and half-angles
+  const y = (alphaDeg * Math.PI / 180) / 2;      // Yaw (around Y-axis in WebGL / world Z)
+  const x = (betaDeg * Math.PI / 180) / 2;       // Pitch (around X-axis)
+  const z = (-gammaDeg * Math.PI / 180) / 2;     // Roll (around Z-axis, negative per W3C specification)
 
-  const cA = Math.cos(alpha), sA = Math.sin(alpha);
-  const cB = Math.cos(beta), sB = Math.sin(beta);
-  const cG = Math.cos(gamma), sG = Math.sin(gamma);
+  const cY = Math.cos(y), sY = Math.sin(y);
+  const cX = Math.cos(x), sX = Math.sin(x);
+  const cZ = Math.cos(z), sZ = Math.sin(z);
 
+  // 'YXZ' sequence multiplication result
   return {
-    x: sA * cB * cG - cA * sB * sG,
-    y: cA * sB * cG + sA * cB * sG,
-    z: cA * cB * sG - sA * sB * cG,
-    w: cA * cB * cG + sA * sB * sG
+    x: sX * cY * cZ + cX * sY * sZ,
+    y: cX * sY * cZ - sX * cY * sZ,
+    z: cX * cY * sZ - sX * sY * cZ,
+    w: cX * cY * cZ + sX * sY * sZ
   };
 }
 
@@ -142,14 +144,14 @@ export function compensateScreenOrientation(matrix: Matrix3, angleDeg: number): 
 
 /**
  * Transforms a 3D vector from world space to camera/device space.
- * Since the rotation matrix R transforms from world to device, we multiply by R^T (transpose of R),
- * which is mathematically equivalent to the matrix inverse.
+ * Multiplies by the rows of the rotation matrix (v_device = R * v_world) since the matrix
+ * is already computed as world-to-device.
  */
 export function transformVector3(matrix: Matrix3, vec: Vector3): Vector3 {
   const m = matrix;
   return {
-    x: m[0][0] * vec.x + m[1][0] * vec.y + m[2][0] * vec.z,
-    y: m[0][1] * vec.x + m[1][1] * vec.y + m[2][1] * vec.z,
-    z: m[0][2] * vec.x + m[1][2] * vec.y + m[2][2] * vec.z
+    x: m[0][0] * vec.x + m[0][1] * vec.y + m[0][2] * vec.z,
+    y: m[1][0] * vec.x + m[1][1] * vec.y + m[1][2] * vec.z,
+    z: m[2][0] * vec.x + m[2][1] * vec.y + m[2][2] * vec.z
   };
 }

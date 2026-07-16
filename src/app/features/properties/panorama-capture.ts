@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, inject, signal, viewChild, ElementRef, Output, EventEmitter } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, signal, viewChild, ElementRef, Output, EventEmitter, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { CameraService } from '../../core/services/camera.service';
 import { OrientationService } from '../../core/services/orientation.service';
@@ -33,7 +33,7 @@ import { HttpClient } from '@angular/common/http';
         </button>
       </div>
 
-      <!-- Step 1: Permissions / Mode Selection -->
+      <!-- Step 1: Permissions -->
       <div class="step-card glass-panel" *ngIf="step() === 'permission'">
         <div class="intro-content">
           <span class="material-symbols-outlined large-icon glow-text-green">settings_motion</span>
@@ -299,7 +299,10 @@ export class PanoramaCaptureComponent implements OnInit, OnDestroy {
   // Viewfinder live data
   readonly targets = () => this.panoramaService.targets();
   readonly activeTarget = () => this.panoramaService.getActiveTarget();
-  readonly completedCount = signal<number>(0);
+  
+  // Computed signal to track completed count automatically
+  readonly completedCount = computed(() => this.targets().filter(t => t.completed).length);
+  
   readonly currentYaw = signal<number>(0);
   readonly currentPitch = signal<number>(0);
   readonly isAligned = signal<boolean>(false);
@@ -445,7 +448,6 @@ export class PanoramaCaptureComponent implements OnInit, OnDestroy {
     if (video) {
       video.srcObject = this.cameraService.stream();
 
-      // Read active camera track settings to dynamically calibrate FOV projection aspect ratio
       const stream = this.cameraService.stream();
       if (stream) {
         const track = stream.getVideoTracks()[0];
@@ -530,10 +532,8 @@ export class PanoramaCaptureComponent implements OnInit, OnDestroy {
     const active = this.activeTarget();
     if (active) {
       const guide = this.panoramaService.getInstructions(yaw, pitch);
-      
-      // Calculate angular error using 3D dot product logic in ProjectionService
       const angularError = this.projectionService.getAngularError(active.yaw, active.pitch, matrix);
-      const isAligned = angularError <= 3.0; // aligned within 3 degrees in true 3D space
+      const isAligned = angularError <= 3.0;
 
       this.guidanceText.set(tooFast ? 'Hold Phone Still!' : guide.text);
       this.isAligned.set(!tooFast && isAligned);
@@ -613,10 +613,7 @@ export class PanoramaCaptureComponent implements OnInit, OnDestroy {
 
       this.panoramaService.completeActiveTarget(frameData);
 
-      const completed = this.targets().filter(t => t.completed).length;
-      this.completedCount.set(completed);
-
-      if (completed === this.targets().length) {
+      if (this.completedCount() === this.targets().length) {
         this.startStitching();
       } else {
         this.alignLocked = false;
@@ -678,7 +675,6 @@ export class PanoramaCaptureComponent implements OnInit, OnDestroy {
 
   retakeLast(): void {
     this.panoramaService.retakeCurrentTarget();
-    this.completedCount.set(this.targets().filter(t => t.completed).length);
     this.alignLocked = false;
   }
 
@@ -733,7 +729,6 @@ export class PanoramaCaptureComponent implements OnInit, OnDestroy {
 
   restartCapture(): void {
     this.panoramaService.initializeTargets();
-    this.completedCount.set(0);
     this.stitchProgress.set(0);
     this.stitchedImageUrl.set(null);
     this.step.set('capturing');
@@ -771,10 +766,12 @@ export class PanoramaCaptureComponent implements OnInit, OnDestroy {
       isActive
     );
 
+    // Apply the user's opacity/visibility changes to keep the active target always visible (even offscreen clamped)
     return {
       left: `${pt.x}%`,
       top: `${pt.y}%`,
-      display: pt.isVisible ? 'block' : 'none'
+      opacity: pt.isVisible ? '1' : '0.5',
+      visibility: 'visible'
     };
   }
 
