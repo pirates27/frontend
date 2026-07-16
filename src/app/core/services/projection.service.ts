@@ -12,9 +12,24 @@ export interface ProjectedPoint {
   providedIn: 'root',
 })
 export class ProjectionService {
-  // Back camera focal fields of view in degrees
-  private readonly fovX = 60; 
-  private readonly fovY = 40; 
+  // Configurable fields of view in degrees (default horizontal = 60)
+  private fovX = 60; 
+  private fovY = 40; 
+
+  /**
+   * Computes the vertical field of view dynamically based on the aspect ratio of the active camera track settings.
+   */
+  updateFovFromAspect(width: number, height: number): void {
+    const defaultFovX = 60; // standard horizontal FOV in degrees
+    const aspect = height / width;
+    const halfFovXRad = (defaultFovX * Math.PI / 180) / 2;
+    const halfFovYRad = Math.atan(aspect * Math.tan(halfFovXRad));
+    
+    this.fovX = defaultFovX;
+    this.fovY = halfFovYRad * 2 * 180 / Math.PI;
+    
+    console.log(`Dynamic FOV Calibrated: Horizontal=${this.fovX.toFixed(1)}°, Vertical=${this.fovY.toFixed(1)}° (Aspect=${aspect.toFixed(2)})`);
+  }
 
   /**
    * Projects a world-space target (yaw, pitch) into 2D viewport screen coordinates.
@@ -30,7 +45,7 @@ export class ProjectionService {
     const targetVec = sphericalToVector3(targetYaw, targetPitch);
     const camVec = transformVector3(matrix, targetVec);
 
-    // Compute tangent limits based on FOV settings
+    // Compute tangent limits based on dynamic FOV settings
     const hTanLimit = Math.tan((this.fovX * Math.PI / 180) / 2);
     const vTanLimit = Math.tan((this.fovY * Math.PI / 180) / 2);
 

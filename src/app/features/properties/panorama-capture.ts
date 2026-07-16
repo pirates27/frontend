@@ -6,7 +6,7 @@ import { PanoramaService, CaptureTarget } from '../../core/services/panorama.ser
 import { ProjectionService } from '../../core/services/projection.service';
 import { StitchService } from '../../core/services/stitch.service';
 import { PanoramaViewerComponent } from './panorama-viewer';
-import { getRotationMatrix, Matrix3 } from '../../core/utils/camera-math';
+import { eulerToQuaternion, slerpQuaternions, quaternionToRotationMatrix, compensateScreenOrientation, Quaternion, Matrix3 } from '../../core/utils/camera-math';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSnackBar } from '@angular/material/snack-bar';
@@ -323,14 +323,13 @@ export class PanoramaCaptureComponent implements OnInit, OnDestroy {
   private autoCaptureTimeout: any = null;
   private startingYaw: number | null = null;
 
-  // Render loop properties (low-pass filter)
+  // Raw orientation values from events
   private rawAlpha = 0;
   private rawBeta = 0;
   private rawGamma = 0;
 
-  private smoothedAlpha = 0;
-  private smoothedBeta = 0;
-  private smoothedGamma = 0;
+  // Smoothed quaternion representation
+  private currentQuaternion: Quaternion = { x: 0, y: 0, z: 0, w: 1 };
 
   private prevYaw = 0;
   private prevPitch = 0;
@@ -447,6 +446,18 @@ export class PanoramaCaptureComponent implements OnInit, OnDestroy {
     const video = this.videoElement()?.nativeElement;
     if (video) {
       video.srcObject = this.cameraService.stream();
+
+      // Read active camera track settings to dynamically calibrate FOV projection aspect ratio
+      const stream = this.cameraService.stream();
+      if (stream) {
+        const track = stream.getVideoTracks()[0];
+        if (track) {
+          const settings = track.getSettings();
+          const w = settings.width || 640;
+          const h = settings.height || 480;
+          this.projectionService.updateFovFromAspect(w, h);
+        }
+      }
     }
     window.addEventListener('deviceorientation', this.onOrientationUpdate);
   }
@@ -460,9 +471,8 @@ export class PanoramaCaptureComponent implements OnInit, OnDestroy {
 
     if (this.startingYaw === null) {
       this.startingYaw = rawAlpha;
-      this.smoothedAlpha = 0;
-      this.smoothedBeta = rawBeta;
-      this.smoothedGamma = rawGamma;
+      // Initialize smoothed quaternion on first reading
+      this.currentQuaternion = eulerToQuaternion(0, rawBeta, rawGamma);
     }
 
     this.rawAlpha = (rawAlpha - this.startingYaw + 360) % 360;
@@ -480,31 +490,21 @@ export class PanoramaCaptureComponent implements OnInit, OnDestroy {
   private renderLoop = () => {
     if (this.step() !== 'capturing') return;
 
-    // 1. Exponential low-pass filter (lerp factor = 0.15) for smooth orientation
-    const lerpFactor = 0.15;
-    
-    // Circular alpha
-    let diffAlpha = this.rawAlpha - this.smoothedAlpha;
-    if (diffAlpha > 180) diffAlpha -= 360;
-    if (diffAlpha < -180) diffAlpha += 360;
-    this.smoothedAlpha += diffAlpha * lerpFactor;
-    this.smoothedAlpha = (this.smoothedAlpha + 360) % 360;
+    // 1. Convert Euler degrees to target orientation Quaternion
+    const targetQuat = eulerToQuaternion(this.rawAlpha, this.rawBeta, this.rawGamma);
 
-    // Beta
-    this.smoothedBeta += (this.rawBeta - this.smoothedBeta) * lerpFactor;
+    // 2. Smooth orientation via Quaternion SLERP (Slerp factor = 0.15)
+    this.currentQuaternion = slerpQuaternions(this.currentQuaternion, targetQuat, 0.15);
 
-    // Circular gamma
-    let diffGamma = this.rawGamma - this.smoothedGamma;
-    if (diffGamma > 180) diffGamma -= 360;
-    if (diffGamma < -180) diffGamma += 360;
-    this.smoothedGamma += diffGamma * lerpFactor;
-    this.smoothedGamma = (this.smoothedGamma + 360) % 360;
+    // 3. Derive camera rotation matrix from the smoothed Quaternion
+    let matrix = quaternionToRotationMatrix(this.currentQuaternion);
 
-    // 2. Generate 3D camera rotation matrix
-    const matrix = getRotationMatrix(this.smoothedAlpha, this.smoothedBeta, this.smoothedGamma);
+    // 4. Compensate for Device Screen Orientation Angle (handling landscape views)
+    const screenAngle = window.screen?.orientation?.angle || (window as any).orientation || 0;
+    matrix = compensateScreenOrientation(matrix, screenAngle);
     this.currentRotationMatrix = matrix;
 
-    // 3. Extract camera yaw & pitch from 3D camera forward vector
+    // 5. Extract camera yaw & pitch from 3D camera forward vector
     const fx = -matrix[0][2];
     const fy = -matrix[1][2];
     const fz = -matrix[2][2];
@@ -516,7 +516,7 @@ export class PanoramaCaptureComponent implements OnInit, OnDestroy {
     this.currentYaw.set(Math.round(yaw));
     this.currentPitch.set(Math.round(pitch));
 
-    // 4. Validate speed by orientation delta
+    // 6. Validate movement speed by rotation delta
     let diffYaw = yaw - this.prevYaw;
     if (diffYaw > 180) diffYaw -= 360;
     if (diffYaw < -180) diffYaw += 360;
@@ -529,7 +529,7 @@ export class PanoramaCaptureComponent implements OnInit, OnDestroy {
     this.prevYaw = yaw;
     this.prevPitch = pitch;
 
-    // 5. Update alignment and guidance cues
+    // 7. Process active alignment target instructions
     const active = this.activeTarget();
     if (active) {
       const guide = this.panoramaService.getInstructions(yaw, pitch);
@@ -746,9 +746,7 @@ export class PanoramaCaptureComponent implements OnInit, OnDestroy {
     this.rawAlpha = 0;
     this.rawBeta = 0;
     this.rawGamma = 0;
-    this.smoothedAlpha = 0;
-    this.smoothedBeta = 0;
-    this.smoothedGamma = 0;
+    this.currentQuaternion = { x: 0, y: 0, z: 0, w: 1 };
     setTimeout(() => {
       if (this.isSimulated()) {
         this.startSimulationMode();
