@@ -82,6 +82,30 @@ import { HttpClient } from '@angular/common/http';
           </div>
         </div>
 
+        <!-- Horizontal Compass Radar Strip -->
+        <div class="compass-radar-strip">
+          <div class="radar-track" [style.transform]="getRadarTrackTransform()">
+            <!-- compass card directions -->
+            <span class="radar-card" style="left: 0px;">N</span>
+            <span class="radar-card" style="left: 90px;">E</span>
+            <span class="radar-card" style="left: 180px;">S</span>
+            <span class="radar-card" style="left: 270px;">W</span>
+            <span class="radar-card" style="left: 360px;">N</span>
+            
+            <!-- target positions -->
+            <div class="radar-target" 
+                 *ngFor="let target of targets()" 
+                 [ngClass]="{
+                   'completed': target.completed,
+                   'active': target.id === activeTarget()?.id
+                 }"
+                 [style.left.px]="target.yaw">
+              {{ target.id }}
+            </div>
+          </div>
+          <div class="radar-cursor"></div>
+        </div>
+
         <!-- Dynamic Screen Flash -->
         <div class="screen-flash" [class.flash-active]="triggerFlash()"></div>
 
@@ -220,411 +244,7 @@ import { HttpClient } from '@angular/common/http';
       </div>
     </div>
   `,
-  styles: [`
-    .pano-capture-overlay {
-      position: fixed;
-      inset: 0;
-      background: #090d16;
-      z-index: 5000;
-      display: flex;
-      flex-direction: column;
-      color: #f8fafc;
-      font-family: var(--font-sans);
-    }
-    .capture-header {
-      height: 56px;
-      padding: 0 16px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      background: rgba(15, 23, 42, 0.9);
-      border-bottom: 1px solid rgba(255,255,255,0.08);
-      z-index: 10;
-      .title-row {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        font-weight: 600;
-        font-family: var(--font-display);
-        .logo-icon { color: var(--accent-primary); }
-      }
-      .close-btn { color: #94a3b8; }
-    }
-    .step-card {
-      margin: auto;
-      width: 90%;
-      max-width: 460px;
-      padding: 30px;
-      text-align: center;
-      border: 1px solid rgba(255,255,255,0.08);
-    }
-    .intro-content {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 20px;
-      .large-icon { font-size: 4rem; width: 4rem; height: 4rem; }
-      h2 { margin: 0; font-family: var(--font-display); }
-      p { margin: 0; font-size: 0.9rem; color: #94a3b8; line-height: 1.5; }
-      .grant-btn { width: 100%; padding: 12px; font-weight: 600; }
-    }
-    .permission-check-list {
-      width: 100%;
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-      background: rgba(0,0,0,0.2);
-      padding: 16px;
-      border-radius: 8px;
-      border: 1px solid rgba(255,255,255,0.05);
-      .check-item {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        font-size: 0.85rem;
-        color: #e2e8f0;
-      }
-    }
-    .viewfinder-container {
-      flex: 1;
-      position: relative;
-      overflow: hidden;
-      display: flex;
-      flex-direction: column;
-      video {
-        position: absolute;
-        inset: 0;
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-        z-index: 1;
-      }
-    }
-    .simulated-backdrop {
-      position: absolute;
-      inset: 0;
-      background: radial-gradient(circle, #0f172a, #020617);
-      z-index: 1;
-      overflow: hidden;
-      .sky-zone {
-        position: absolute;
-        width: 200%;
-        height: 100%;
-        top: 0;
-        left: -50%;
-        background: linear-gradient(180deg, #070f1e 0%, #1e3a8a 100%);
-        border-bottom: 2px solid var(--accent-primary);
-        opacity: 0.85;
-        transition: transform 0.1s ease-out;
-      }
-      .ground-zone {
-        position: absolute;
-        width: 200%;
-        height: 50%;
-        bottom: 0;
-        left: -50%;
-        background: repeating-linear-gradient(45deg, #0f172a, #0f172a 20px, #1e293b 20px, #1e293b 40px);
-        opacity: 0.9;
-        transition: transform 0.1s ease-out;
-      }
-      .horizon-line {
-        position: absolute;
-        top: 50%;
-        left: 0;
-        right: 0;
-        height: 2px;
-        background: rgba(255,255,255,0.2);
-        z-index: 2;
-      }
-      .simulation-badge {
-        position: absolute;
-        top: 88px;
-        left: 50%;
-        transform: translateX(-50%);
-        padding: 6px 12px;
-        background: rgba(2, 132, 199, 0.2);
-        border: 1px solid rgba(2, 132, 199, 0.5);
-        color: var(--accent-primary);
-        border-radius: 4px;
-        font-size: 0.75rem;
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        font-weight: 600;
-        z-index: 3;
-        white-space: nowrap;
-        mat-icon { font-size: 16px; width: 16px; height: 16px; }
-      }
-    }
-    .simulator-hud-controls {
-      position: absolute;
-      bottom: 100px;
-      right: 16px;
-      z-index: 10;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 6px;
-      background: rgba(15,23,42,0.85);
-      padding: 8px;
-      border-radius: 8px;
-      border: 1px solid rgba(255,255,255,0.08);
-      .middle-row {
-        display: flex;
-        gap: 6px;
-      }
-      .sim-hud-btn {
-        width: 36px;
-        height: 36px;
-        background: #1e293b;
-        color: #fff;
-        border: 1px solid rgba(255,255,255,0.1);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        min-width: 0;
-        padding: 0;
-        mat-icon { font-size: 20px; width: 20px; height: 20px; }
-      }
-    }
-    .screen-flash {
-      position: absolute;
-      inset: 0;
-      background: #ffffff;
-      opacity: 0;
-      z-index: 5;
-      pointer-events: none;
-      transition: opacity 0.1s ease-out;
-      &.flash-active { opacity: 0.8; }
-    }
-    .target-dots-container {
-      position: absolute;
-      inset: 0;
-      z-index: 2;
-      pointer-events: none;
-    }
-    .target-dot {
-      position: absolute;
-      width: 36px;
-      height: 36px;
-      transform: translate(-50%, -50%);
-      transition: transform 0.1s ease-out;
-      .dot-inner {
-        position: absolute;
-        inset: 6px;
-        border-radius: 50%;
-        background: rgba(148, 163, 184, 0.4); /* remaining gray */
-        border: 2px solid #94a3b8;
-        box-shadow: 0 0 8px rgba(0,0,0,0.5);
-        transition: background-color 0.2s, border-color 0.2s;
-      }
-      .dot-label {
-        position: absolute;
-        inset: 0;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 0.7rem;
-        font-weight: 700;
-        color: #fff;
-      }
-      &.completed {
-        .dot-inner {
-          background: rgba(16, 185, 129, 0.5); /* completed green */
-          border-color: #10b981;
-          box-shadow: 0 0 10px rgba(16, 185, 129, 0.5);
-        }
-      }
-      &.active {
-        .dot-inner {
-          background: rgba(2, 132, 199, 0.6); /* active blue */
-          border-color: #0ea5e9;
-          box-shadow: 0 0 12px #0ea5e9;
-          animation: pulse 1s infinite alternate;
-        }
-        &.clamped {
-          .dot-inner {
-            background: rgba(249, 115, 22, 0.6) !important; /* clamped orange */
-            border-color: #f97316 !important;
-            box-shadow: 0 0 12px #f97316 !important;
-          }
-        }
-      }
-    }
-    .center-crosshair {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      width: 48px;
-      height: 48px;
-      z-index: 3;
-      pointer-events: none;
-      .crosshair-ring {
-        width: 100%;
-        height: 100%;
-        border-radius: 50%;
-        border: 2px solid rgba(255,255,255,0.4);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        transition: border-color 0.2s, transform 0.2s;
-        .crosshair-dot {
-          width: 8px;
-          height: 8px;
-          border-radius: 50%;
-          background: rgba(255,255,255,0.4);
-        }
-      }
-      &.aligned {
-        .crosshair-ring {
-          border-color: var(--accent-primary);
-          transform: scale(1.15);
-          .crosshair-dot { background: var(--accent-primary); }
-        }
-      }
-    }
-    .hud-panel {
-      position: absolute;
-      top: 16px;
-      left: 50%;
-      transform: translateX(-50%);
-      width: 90%;
-      max-width: 400px;
-      padding: 12px 16px;
-      display: flex;
-      align-items: center;
-      gap: 16px;
-      z-index: 4;
-      border: 1px solid rgba(255,255,255,0.08);
-      .progress-indicator {
-        position: relative;
-        width: 60px;
-        height: 60px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        .progress-ring { transform: rotate(-90deg); }
-        .progress-ring-bar { transition: stroke-dashoffset 0.35s; }
-        .progress-text {
-          position: absolute;
-          font-size: 0.75rem;
-          font-weight: 700;
-        }
-      }
-      .guidance-directions {
-        display: flex;
-        flex-direction: column;
-        gap: 2px;
-        .instruction-text {
-          font-size: 1rem;
-          font-weight: 700;
-          color: #fff;
-        }
-        .guidance-details {
-          font-size: 0.7rem;
-          color: #94a3b8;
-        }
-      }
-    }
-    .viewfinder-actions {
-      position: absolute;
-      bottom: 24px;
-      left: 0;
-      right: 0;
-      display: flex;
-      justify-content: space-around;
-      align-items: center;
-      z-index: 4;
-      padding: 0 16px;
-      button { font-weight: 600; }
-      .manual-capture-btn {
-        width: 64px;
-        height: 64px;
-        border-radius: 50%;
-        background: #fff;
-        color: #0f172a;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.5);
-      }
-    }
-    .stitching-loader {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 20px;
-      .spinner-wrapper {
-        position: relative;
-        width: 120px;
-        height: 120px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        .progress-ring-large { transform: rotate(-90deg); }
-        .progress-ring-bar { transition: stroke-dashoffset 0.1s; }
-        .spinner-percent {
-          position: absolute;
-          font-size: 1.4rem;
-          font-weight: 800;
-          font-family: var(--font-display);
-        }
-      }
-      h3 { margin: 0; font-family: var(--font-display); }
-      .status-msg { margin: 0; font-size: 0.85rem; color: #94a3b8; }
-      .shimmer-bar {
-        width: 100%;
-        height: 6px;
-        background: rgba(255,255,255,0.08);
-        border-radius: 3px;
-        overflow: hidden;
-        margin-top: 8px;
-        .shimmer-progress {
-          height: 100%;
-          background: var(--accent-primary);
-          transition: width 0.1s ease-out;
-        }
-      }
-    }
-    .preview-container {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      position: relative;
-      .preview-viewport {
-        flex: 1;
-        width: 100%;
-      }
-    }
-    .preview-actions-panel {
-      position: absolute;
-      bottom: 24px;
-      left: 50%;
-      transform: translateX(-50%);
-      width: 90%;
-      max-width: 480px;
-      padding: 20px;
-      z-index: 10;
-      border: 1px solid rgba(255,255,255,0.08);
-      h3 { margin: 0 0 4px 0; font-family: var(--font-display); font-size: 1.1rem; }
-      p { margin: 0 0 16px 0; font-size: 0.8rem; color: #94a3b8; }
-      .preview-btn-row {
-        display: flex;
-        gap: 12px;
-        button { flex: 1; font-weight: 600; }
-        .save-btn { flex: 1.5; }
-      }
-    }
-    @keyframes pulse {
-      from { transform: scale(0.9); }
-      to { transform: scale(1.1); }
-    }
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(8px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-    .animate-fade-in {
-      animation: fadeIn 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
-    }
-  `]
+  styles: []
 })
 export class PanoramaCaptureComponent implements OnInit, OnDestroy {
   @Output() onSave = new EventEmitter<string>();
@@ -665,6 +285,7 @@ export class PanoramaCaptureComponent implements OnInit, OnDestroy {
   readonly saving = signal<boolean>(false);
   private alignLocked = false;
   private autoCaptureTimeout: any = null;
+  private startingYaw: number | null = null;
 
   // Circular progress calculations
   readonly ringCircumference = 2 * Math.PI * 24; // 150.79
@@ -739,8 +360,15 @@ export class PanoramaCaptureComponent implements OnInit, OnDestroy {
   private onOrientationUpdate = (event: DeviceOrientationEvent) => {
     if (this.step() !== 'capturing' || this.isSimulated()) return;
 
-    const yaw = Math.round(event.alpha || 0);
+    const rawYaw = Math.round(event.alpha || 0);
     const pitch = Math.round(event.beta || 0);
+
+    // Dynamic initial bearing calibration
+    if (this.startingYaw === null) {
+      this.startingYaw = rawYaw;
+    }
+
+    const yaw = (rawYaw - this.startingYaw + 360) % 360;
 
     this.currentYaw.set(yaw);
     this.currentPitch.set(pitch);
@@ -968,6 +596,7 @@ export class PanoramaCaptureComponent implements OnInit, OnDestroy {
     this.stitchedImageUrl.set(null);
     this.step.set('capturing');
     this.alignLocked = false;
+    this.startingYaw = null;
     setTimeout(() => {
       if (this.isSimulated()) {
         this.startSimulationMode();
@@ -1037,6 +666,13 @@ export class PanoramaCaptureComponent implements OnInit, OnDestroy {
     const y = 50 - (dPitch / (fovY / 2)) * 50;
 
     return x < 0 || x > 100 || y < 0 || y > 100;
+  }
+
+  getRadarTrackTransform(): string {
+    const yaw = this.currentYaw();
+    const trackWidth = 360; // 1px per degree
+    const offset = 180 - yaw; // shift to center on current yaw
+    return `translateX(${offset}px)`;
   }
 
   getSimulatedSkyTransform(): string {
