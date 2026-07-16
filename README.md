@@ -19,6 +19,65 @@ The application implements a clean, modular structure with Role-Based Access Con
 
 ---
 
+## 🌐 Interactive Architecture Flow
+
+Below is the interactive visual representation of how the LandLens frontend integrates with our third-party services and AWS-hosted backend. *(Hover over nodes or pan/zoom in supported markdown viewers)*
+
+```mermaid
+flowchart TD
+    %% Styling
+    classDef frontend fill:#dd0031,stroke:#c3002f,stroke-width:2px,color:#fff
+    classDef aws fill:#ff9900,stroke:#232f3e,stroke-width:2px,color:#232f3e
+    classDef spring fill:#6db33f,stroke:#4f8b29,stroke-width:2px,color:#fff
+    classDef thirdparty fill:#4a90e2,stroke:#357abd,stroke-width:2px,color:#fff
+    classDef db fill:#336791,stroke:#2a5475,stroke-width:2px,color:#fff
+
+    %% Nodes
+    User([🧑 User / Browser])
+    
+    subgraph "Frontend Layer"
+        Angular["🛡️ Angular 18 SPA (LandLens)"]:::frontend
+    end
+    
+    subgraph "Third-Party APIs"
+        Cloudinary["📸 Cloudinary Vault<br>(Unsigned Uploads)"]:::thirdparty
+        Mapbox["🗺️ Mapbox GL JS<br>(Geocoding & Maps)"]:::thirdparty
+        Momento["🕶️ Momento360<br>(Virtual Tours)"]:::thirdparty
+    end
+    
+    subgraph "AWS Cloud Infrastructure"
+        ALB["⚖️ AWS App Load Balancer<br>(landlens-production-alb)"]:::aws
+        
+        subgraph "Backend Layer"
+            Spring["🍃 Spring Boot REST API<br>(Auth, Properties, Verification)"]:::spring
+        end
+        
+        DB[("🐘 PostgreSQL / PostGIS<br>(Spatial DB)")]:::db
+        AI["🤖 AI Verification Engine<br>(Document OCR & Trust Score)"]:::aws
+    end
+
+    %% Relationships
+    User -->|Interacts| Angular
+    
+    Angular -->|Direct Image/Doc Upload| Cloudinary
+    Angular -->|Fetch Tiles & GeoData| Mapbox
+    Angular -->|Embeds iframes| Momento
+    
+    Angular == "REST API Calls (JWT Bearer)" ==> ALB
+    ALB -->|Routes Traffic| Spring
+    
+    Spring -->|Reads/Writes Data| DB
+    Spring -->|Triggers Verification| AI
+    Spring -.->|Validates Media URLs| Cloudinary
+    
+    %% Interactions & Click Events (Makes it interactive in supported viewers)
+    click Angular "https://angular.dev" "Go to Angular"
+    click Spring "https://spring.io" "Go to Spring"
+    click Mapbox "https://docs.mapbox.com" "Go to Mapbox Docs"
+```
+
+---
+
 ## 🚀 Recent Updates & Fixes
 *   **Security & Data Integrity**: 
     * Implemented strict provider-level property filtering in the Provider Dashboard to prevent 401 Unauthorized exceptions during cross-account edits.
