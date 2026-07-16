@@ -1,5 +1,5 @@
 import { Routes } from '@angular/router';
-import { authGuard, roleGuard } from './core/guards/auth.guard';
+import { authGuard, roleGuard, guestGuard } from './core/guards/auth.guard';
 import {
   ProfileRedirectComponent,
   NotificationsRedirectComponent,
@@ -12,10 +12,12 @@ export const routes: Routes = [
   {
     path: 'login',
     loadComponent: () => import('./features/auth/login/login').then((m) => m.LoginComponent),
+    canActivate: [guestGuard],
   },
   {
     path: 'register',
     loadComponent: () => import('./features/auth/register/register').then((m) => m.RegisterComponent),
+    canActivate: [guestGuard],
   },
   {
     path: 'dashboard',

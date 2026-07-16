@@ -89,17 +89,7 @@ import mapboxgl from 'mapbox-gl';
           <div class="pano-wrapper glass-panel">
             <div class="pano-header-row">
               <h3>360° Interactive Boundary Panorama</h3>
-              <!-- Provider Actions -->
-              <div class="pano-actions" *ngIf="userRole() === 'PROVIDER'">
-                <input type="file" #detailPanoInput (change)="upload360Image($event)" accept="image/*" style="display: none" />
-                <button mat-raised-button color="accent" class="btn-interactive" [disabled]="uploading360()" (click)="detailPanoInput.click()">
-                  <mat-icon>camera_360</mat-icon>
-                  {{ uploading360() ? 'Uploading...' : (item.threeSixtyImageUrl ? 'Replace 360° Tour' : 'Add 360° Tour') }}
-                </button>
-                <button mat-icon-button color="warn" class="btn-interactive" *ngIf="item.threeSixtyImageUrl" (click)="remove360Image()">
-                  <mat-icon>delete</mat-icon>
-                </button>
-              </div>
+
             </div>
             
             <div *ngIf="item.threeSixtyImageUrl" #panoContainer class="pano-container animate-fade-in"></div>
@@ -565,8 +555,6 @@ export class PropertyDetailComponent implements OnInit, OnDestroy {
   private readonly snackBar = inject(MatSnackBar);
   private readonly http = inject(HttpClient);
 
-  readonly uploading360 = signal<boolean>(false);
-
   private readonly mapContainer = viewChild<ElementRef>('mapContainer');
   private readonly panoContainer = viewChild<ElementRef>('panoContainer');
 
@@ -801,61 +789,4 @@ export class PropertyDetailComponent implements OnInit, OnDestroy {
     }
   }
 
-  upload360Image(event: Event): void {
-    const file = (event.target as HTMLInputElement).files?.[0];
-    const prop = this.property();
-    if (!file || !prop) return;
-
-    this.uploading360.set(true);
-
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('upload_preset', environment.cloudinaryUploadPreset);
-
-    this.http.post<any>(`https://api.cloudinary.com/v1_1/${environment.cloudinaryCloudName}/upload`, formData)
-      .subscribe({
-        next: (res) => {
-          const secureUrl = res.secure_url;
-          this.updatePropertyPanorama(prop.id, secureUrl);
-        },
-        error: () => {
-          const nameClean = file.name.replace(/\s+/g, '_');
-          const fallbackUrl = `http://storage.landlens.com/panoramas/${nameClean}`;
-          this.snackBar.open('Direct Cloudinary endpoint failed. Mocking upload url.', 'Dismiss', { duration: 3000 });
-          this.updatePropertyPanorama(prop.id, fallbackUrl);
-        }
-      });
-  }
-
-  remove360Image(): void {
-    const prop = this.property();
-    if (!prop) return;
-    this.uploading360.set(true);
-    this.updatePropertyPanorama(prop.id, null);
-  }
-
-  private updatePropertyPanorama(id: string, url: string | null): void {
-    this.propertyService.updateProperty(id, { threeSixtyImageUrl: url || '' }).subscribe({
-      next: (updated) => {
-        this.uploading360.set(false);
-        this.snackBar.open(url ? '360° Panorama uploaded successfully!' : '360° Panorama removed successfully.', 'Dismiss', { duration: 3000 });
-        this.property.set(updated);
-        
-        // Re-initialize viewer
-        if (this.panoViewer) {
-          this.panoViewer.destroy();
-          this.panoViewer = null;
-        }
-        if (updated.threeSixtyImageUrl) {
-          setTimeout(() => {
-            this.initPanorama(updated.threeSixtyImageUrl);
-          }, 100);
-        }
-      },
-      error: () => {
-        this.uploading360.set(false);
-        this.snackBar.open('Failed to update 360° image on property registry.', 'Dismiss', { duration: 3000 });
-      }
-    });
-  }
 }

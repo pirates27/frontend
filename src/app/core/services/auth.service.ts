@@ -98,10 +98,8 @@ export class AuthService {
         error: () => {},
       });
     }
-    localStorage.removeItem('accessToken');
-    localStorage.removeItem('refreshToken');
-    localStorage.removeItem('userEmail');
-    localStorage.removeItem('userRole');
+    localStorage.clear();
+    sessionStorage.clear();
     this.currentUser.set(null);
     this.isAuthenticated.set(false);
     this.router.navigate(['/login']);
