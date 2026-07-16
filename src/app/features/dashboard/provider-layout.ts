@@ -1,6 +1,6 @@
 import { Component, inject, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterModule, RouterOutlet, ChildrenOutletContexts } from '@angular/router';
+import { RouterModule, RouterOutlet, ChildrenOutletContexts, Router } from '@angular/router';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -45,12 +45,12 @@ import { interval, Subscription } from 'rxjs';
     </mat-toolbar>
 
     <!-- Main Content -->
-    <main class="provider-content" [@routeAnimations]="getRouteAnimationData()">
+    <main class="provider-content" [class.no-bottom-nav]="isRegisterPage()" [@routeAnimations]="getRouteAnimationData()">
       <router-outlet></router-outlet>
     </main>
 
     <!-- Bottom Navigation -->
-    <nav class="bottom-nav">
+    <nav class="bottom-nav" *ngIf="!isRegisterPage()">
       <a mat-button routerLink="/dashboard/provider" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">
         <mat-icon>home</mat-icon>
         <span>My Lands</span>
@@ -105,6 +105,10 @@ import { interval, Subscription } from 'rxjs';
         radial-gradient(rgba(15, 23, 42, 0.03) 1px, transparent 1px),
         var(--bg-primary);
       background-size: 24px 24px;
+    }
+    .provider-content.no-bottom-nav {
+      padding-bottom: 16px;
+      min-height: calc(100vh - 56px);
     }
     .bottom-nav {
       position: fixed;
@@ -170,8 +174,13 @@ export class ProviderLayoutComponent implements OnInit, OnDestroy {
   private readonly auth = inject(AuthService);
   private readonly notificationService = inject(NotificationService);
   private readonly contexts = inject(ChildrenOutletContexts);
+  private readonly router = inject(Router);
   private pollSubscription?: Subscription;
   unreadCount = 0;
+
+  isRegisterPage(): boolean {
+    return this.router.url.includes('/properties/create');
+  }
 
   ngOnInit() {
     this.loadUnreadCount();

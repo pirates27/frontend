@@ -8,7 +8,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
-import { MatTabsModule } from '@angular/material/tabs';
+import { MatStepperModule } from '@angular/material/stepper';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { HttpClient } from '@angular/common/http';
 import { PropertyService, Property } from '../../../core/services/property.service';
@@ -29,7 +29,7 @@ import mapboxgl from 'mapbox-gl';
     MatSelectModule,
     MatButtonModule,
     MatIconModule,
-    MatTabsModule,
+    MatStepperModule,
   ],
   template: `
     <div class="property-create-container">
@@ -39,9 +39,9 @@ import mapboxgl from 'mapbox-gl';
           <h2>Register New Land Property</h2>
         </div>
 
-        <mat-tab-group [selectedIndex]="currentStep()" (selectedIndexChange)="onStepChange($event)" class="steps-tabs">
+        <mat-stepper linear #stepper (selectionChange)="onStepSelectionChange($event)" class="steps-stepper">
           <!-- Step 1: Basic Details -->
-          <mat-tab label="1. Basic Details">
+          <mat-step [stepControl]="detailsForm" label="Basic Details">
             <form [formGroup]="detailsForm" class="step-form">
               <mat-form-field appearance="fill">
                 <mat-label>Property Title</mat-label>
@@ -84,15 +84,15 @@ import mapboxgl from 'mapbox-gl';
 
               <div class="actions">
                 <span></span>
-                <button mat-raised-button color="primary" [disabled]="detailsForm.invalid" (click)="nextStep()">
+                <button mat-raised-button color="primary" class="btn-interactive" [disabled]="detailsForm.invalid" matStepperNext>
                   Next: Address & Map
                 </button>
               </div>
             </form>
-          </mat-tab>
+          </mat-step>
 
           <!-- Step 2: Location Map -->
-          <mat-tab label="2. Address & Location">
+          <mat-step [stepControl]="locationForm" label="Address & Location">
             <form [formGroup]="locationForm" class="step-form">
               <mat-form-field appearance="fill">
                 <mat-label>Full Address</mat-label>
@@ -139,22 +139,22 @@ import mapboxgl from 'mapbox-gl';
               </div>
 
               <div class="actions">
-                <button mat-button (click)="prevStep()">Back</button>
-                <button mat-raised-button color="primary" [disabled]="locationForm.invalid" (click)="nextStep()">
+                <button mat-button class="btn-interactive" matStepperPrevious>Back</button>
+                <button mat-raised-button color="primary" class="btn-interactive" [disabled]="locationForm.invalid" matStepperNext>
                   Next: Upload Media
                 </button>
               </div>
             </form>
-          </mat-tab>
+          </mat-step>
 
           <!-- Step 3: Media Upload -->
-          <mat-tab label="3. Media Files">
+          <mat-step label="Media Files">
             <div class="step-form">
               <div class="upload-section glass-panel">
                 <h4>Regular Gallery Image</h4>
                 <p>Upload property images. You can select multiple.</p>
                 <input type="file" #imageInput (change)="uploadMedia($event, 'image')" accept="image/*" style="display: none" />
-                <button mat-raised-button color="accent" (click)="imageInput.click()" [disabled]="uploadingType() === 'image'">
+                <button mat-raised-button color="accent" class="btn-interactive" (click)="imageInput.click()" [disabled]="uploadingType() === 'image'">
                   <mat-icon>image</mat-icon>
                   {{ uploadingType() === 'image' ? 'Uploading Image...' : 'Select & Upload Image' }}
                 </button>
@@ -170,7 +170,7 @@ import mapboxgl from 'mapbox-gl';
                 <h4>360° Panorama Image</h4>
                 <p>Upload a panorama image to enable 360° viewing.</p>
                 <input type="file" #panoInput (change)="uploadMedia($event, 'panorama')" accept="image/*" style="display: none" />
-                <button mat-raised-button color="accent" (click)="panoInput.click()" [disabled]="uploadingType() === 'panorama'">
+                <button mat-raised-button color="accent" class="btn-interactive" (click)="panoInput.click()" [disabled]="uploadingType() === 'panorama'">
                   <mat-icon>vrpanoramas</mat-icon>
                   {{ uploadingType() === 'panorama' ? 'Uploading 360...' : 'Upload 360° Image' }}
                 </button>
@@ -190,7 +190,7 @@ import mapboxgl from 'mapbox-gl';
                 <h4>Walkthrough Video</h4>
                 <p>Upload property walkthrough MP4 video.</p>
                 <input type="file" #videoInput (change)="uploadMedia($event, 'video')" accept="video/*" style="display: none" />
-                <button mat-raised-button color="accent" (click)="videoInput.click()" [disabled]="uploadingType() === 'video'">
+                <button mat-raised-button color="accent" class="btn-interactive" (click)="videoInput.click()" [disabled]="uploadingType() === 'video'">
                   <mat-icon>videocam</mat-icon>
                   {{ uploadingType() === 'video' ? 'Uploading Video...' : 'Upload Walkthrough Video' }}
                 </button>
@@ -204,16 +204,16 @@ import mapboxgl from 'mapbox-gl';
               </div>
 
               <div class="actions">
-                <button mat-button (click)="prevStep()">Back</button>
-                <button mat-raised-button color="primary" (click)="nextStep()">
+                <button mat-button class="btn-interactive" matStepperPrevious>Back</button>
+                <button mat-raised-button color="primary" class="btn-interactive" matStepperNext>
                   Next: Legal Deeds
                 </button>
               </div>
             </div>
-          </mat-tab>
+          </mat-step>
 
           <!-- Step 4: Deeds & Submit -->
-          <mat-tab label="4. Legal Deeds & Submit">
+          <mat-step label="Legal Deeds & Submit">
             <div class="step-form">
               <div class="upload-section glass-panel">
                 <h4>Deeds & Survey Documents</h4>
@@ -230,7 +230,7 @@ import mapboxgl from 'mapbox-gl';
                 </mat-form-field>
 
                 <input type="file" #docInput (change)="uploadMedia($event, 'document')" accept=".pdf,image/*" style="display: none" />
-                <button mat-raised-button color="accent" (click)="docInput.click()" [disabled]="uploadingType() === 'document'">
+                <button mat-raised-button color="accent" class="btn-interactive" (click)="docInput.click()" [disabled]="uploadingType() === 'document'">
                   <mat-icon>upload_file</mat-icon>
                   {{ uploadingType() === 'document' ? 'Uploading...' : 'Upload Selected Document' }}
                 </button>
@@ -244,18 +244,18 @@ import mapboxgl from 'mapbox-gl';
               </div>
 
               <div class="actions">
-                <button mat-button (click)="prevStep()">Back</button>
+                <button mat-button class="btn-interactive" matStepperPrevious>Back</button>
                 <button mat-raised-button color="accent" 
                         [disabled]="submitting()" 
                         (click)="submitProperty()"
-                        class="submit-btn glow-border-green">
+                        class="submit-btn glow-border-green btn-interactive">
                   <span *ngIf="!submitting()">Submit & Launch AI Check</span>
                   <span *ngIf="submitting()">Registering Property...</span>
                 </button>
               </div>
             </div>
-          </mat-tab>
-        </mat-tab-group>
+          </mat-step>
+        </mat-stepper>
       </div>
     </div>
   `,
@@ -370,7 +370,6 @@ export class PropertyCreateComponent implements OnInit, OnDestroy {
 
   private readonly mapContainer = viewChild<ElementRef>('mapContainer');
 
-  readonly currentStep = signal<number>(0);
   readonly uploadingType = signal<string | null>(null);
   readonly submitting = signal<boolean>(false);
 
@@ -414,23 +413,8 @@ export class PropertyCreateComponent implements OnInit, OnDestroy {
     }
   }
 
-  onStepChange(index: number): void {
-    this.currentStep.set(index);
-    if (index === 1) {
-      setTimeout(() => this.initMap(), 100);
-    }
-  }
-
-  nextStep(): void {
-    this.currentStep.update((v) => v + 1);
-    if (this.currentStep() === 1) {
-      setTimeout(() => this.initMap(), 100);
-    }
-  }
-
-  prevStep(): void {
-    this.currentStep.update((v) => v - 1);
-    if (this.currentStep() === 1) {
+  onStepSelectionChange(event: any): void {
+    if (event.selectedIndex === 1) {
       setTimeout(() => this.initMap(), 100);
     }
   }
