@@ -8,7 +8,6 @@ import { StitchService } from '../../core/services/stitch.service';
 import { PanoramaViewerComponent } from './panorama-viewer';
 import { eulerToQuaternion, slerpQuaternions, quaternionToRotationMatrix, compensateScreenOrientation, Quaternion, Matrix3 } from '../../core/utils/camera-math';
 import { MatButtonModule } from '@angular/material/button';
-import { MatIconModule } from '@angular/material/icon';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { environment } from '../../../environments/environment';
 import { HttpClient } from '@angular/common/http';
@@ -19,19 +18,18 @@ import { HttpClient } from '@angular/common/http';
   imports: [
     CommonModule,
     PanoramaViewerComponent,
-    MatButtonModule,
-    MatIconModule
+    MatButtonModule
   ],
   template: `
     <div class="pano-capture-overlay animate-fade-in">
       <!-- Header Bar -->
       <div class="capture-header">
         <span class="title-row">
-          <mat-icon class="logo-icon">camera_360</mat-icon>
+          <span class="material-symbols-outlined logo-icon">camera_indoor</span>
           <span>360° Guided Land Capture</span>
         </span>
-        <button mat-icon-button class="close-btn" (click)="exitCapture()">
-          <mat-icon>close</mat-icon>
+        <button mat-icon-button class="close-btn" (click)="exitCapture()" style="border: none; background: transparent; cursor: pointer;">
+          <span class="material-symbols-outlined" style="color: #94a3b8; font-size: 24px;">close</span>
         </button>
       </div>
 
@@ -44,15 +42,15 @@ import { HttpClient } from '@angular/common/http';
           
           <div class="permission-check-list">
             <div class="check-item">
-              <mat-icon [color]="cameraPermStatus() ? 'accent' : 'warn'">
+              <span class="material-symbols-outlined" [style.color]="cameraPermStatus() ? '#10b981' : '#f43f5e'">
                 {{ cameraPermStatus() ? 'check_circle' : 'pending' }}
-              </mat-icon>
+              </span>
               <span>Back Camera Access</span>
             </div>
             <div class="check-item">
-              <mat-icon [color]="sensorPermStatus() ? 'accent' : 'warn'">
+              <span class="material-symbols-outlined" [style.color]="sensorPermStatus() ? '#10b981' : '#f43f5e'">
                 {{ sensorPermStatus() ? 'check_circle' : 'pending' }}
-              </mat-icon>
+              </span>
               <span>Device Orientation Gyro Sensors</span>
             </div>
           </div>
@@ -61,8 +59,8 @@ import { HttpClient } from '@angular/common/http';
             Enable Sensors & Camera
           </button>
           
-          <button mat-button class="simulation-btn btn-interactive" style="margin-top: 12px; color: var(--accent-primary);" (click)="startSimulationMode()">
-            <mat-icon>terminal</mat-icon>
+          <button mat-button class="simulation-btn btn-interactive" style="margin-top: 12px; color: var(--accent-primary); border: none; background: transparent; cursor: pointer;" (click)="startSimulationMode()">
+            <span class="material-symbols-outlined" style="vertical-align: middle; margin-right: 4px;">terminal</span>
             Start Simulator Mode (Testing Fallback)
           </button>
         </div>
@@ -79,7 +77,7 @@ import { HttpClient } from '@angular/common/http';
           <div class="ground-zone" [style.transform]="getSimulatedGroundTransform()"></div>
           <div class="horizon-line"></div>
           <div class="simulation-badge">
-            <mat-icon>terminal</mat-icon>
+            <span class="material-symbols-outlined" style="font-size: 16px; margin-right: 4px;">terminal</span>
             <span>SIMULATOR ACTIVE - Use keyboard ARROWS, tap screen, or HUD buttons to rotate & click</span>
           </div>
         </div>
@@ -102,7 +100,7 @@ import { HttpClient } from '@angular/common/http';
                    'active': target.id === activeTarget()?.id
                  }"
                  [style.left.px]="target.yaw">
-              <mat-icon *ngIf="target.completed" class="radar-check">check</mat-icon>
+              <span *ngIf="target.completed" class="material-symbols-outlined radar-check">check</span>
               <span *ngIf="!target.completed">{{ target.id }}</span>
             </div>
           </div>
@@ -114,13 +112,13 @@ import { HttpClient } from '@angular/common/http';
 
         <!-- Phone Moving Too Fast Flashing Warning Banner -->
         <div class="speed-warning-banner" *ngIf="isPhoneMovingTooFast()">
-          <mat-icon>error_outline</mat-icon>
+          <span class="material-symbols-outlined" style="color: #fff; font-size: 20px;">error</span>
           <span>Moving Too Fast! Hold Phone Still</span>
         </div>
 
         <!-- Large Floating Green Checkmark Success Overlay on capturing -->
         <div class="check-success-overlay" *ngIf="triggerCheckSuccess()">
-          <mat-icon class="scale-up-check">check_circle</mat-icon>
+          <span class="material-symbols-outlined scale-up-check">check_circle</span>
         </div>
 
         <!-- 3D Target Dots Projected on Screen - Render ONLY the single active target dot -->
@@ -134,12 +132,12 @@ import { HttpClient } from '@angular/common/http';
                [ngStyle]="getDotStyle(target)">
             <span class="dot-inner"></span>
             <span class="dot-label">
-              <mat-icon *ngIf="isAligned()" class="green-check">check</mat-icon>
+              <span *ngIf="isAligned()" class="material-symbols-outlined green-check">check</span>
               <ng-container *ngIf="!isAligned()">
-                <mat-icon *ngIf="guidanceDirection() === 'right'">arrow_forward</mat-icon>
-                <mat-icon *ngIf="guidanceDirection() === 'left'">arrow_back</mat-icon>
-                <mat-icon *ngIf="guidanceDirection() === 'up'">arrow_upward</mat-icon>
-                <mat-icon *ngIf="guidanceDirection() === 'down'">arrow_downward</mat-icon>
+                <span *ngIf="guidanceDirection() === 'right'" class="material-symbols-outlined">arrow_forward</span>
+                <span *ngIf="guidanceDirection() === 'left'" class="material-symbols-outlined">arrow_back</span>
+                <span *ngIf="guidanceDirection() === 'up'" class="material-symbols-outlined">arrow_upward</span>
+                <span *ngIf="guidanceDirection() === 'down'" class="material-symbols-outlined">arrow_downward</span>
               </ng-container>
             </span>
           </div>
@@ -192,30 +190,30 @@ import { HttpClient } from '@angular/common/http';
 
         <!-- Simulator Rotation HUD buttons for mobile/touch users -->
         <div class="simulator-hud-controls" *ngIf="isSimulated()">
-          <button type="button" mat-mini-fab class="sim-hud-btn btn-interactive" (click)="rotateSimulated(0, 3)" title="Tilt Up">
-            <mat-icon>arrow_upward</mat-icon>
+          <button type="button" class="sim-hud-btn btn-interactive" (click)="rotateSimulated(0, 3)" title="Tilt Up" style="border: none; border-radius: 50%; cursor: pointer;">
+            <span class="material-symbols-outlined">arrow_upward</span>
           </button>
-          <div class="middle-row">
-            <button type="button" mat-mini-fab class="sim-hud-btn btn-interactive" (click)="rotateSimulated(-10, 0)" title="Rotate Left">
-              <mat-icon>arrow_back</mat-icon>
+          <div class="middle-row" style="display: flex; gap: 4px;">
+            <button type="button" class="sim-hud-btn btn-interactive" (click)="rotateSimulated(-10, 0)" title="Rotate Left" style="border: none; border-radius: 50%; cursor: pointer;">
+              <span class="material-symbols-outlined">arrow_back</span>
             </button>
-            <button type="button" mat-mini-fab class="sim-hud-btn btn-interactive" (click)="rotateSimulated(10, 0)" title="Rotate Right">
-              <mat-icon>arrow_forward</mat-icon>
+            <button type="button" class="sim-hud-btn btn-interactive" (click)="rotateSimulated(10, 0)" title="Rotate Right" style="border: none; border-radius: 50%; cursor: pointer;">
+              <span class="material-symbols-outlined">arrow_forward</span>
             </button>
           </div>
-          <button type="button" mat-mini-fab class="sim-hud-btn btn-interactive" (click)="rotateSimulated(0, -3)" title="Tilt Down">
-            <mat-icon>arrow_downward</mat-icon>
+          <button type="button" class="sim-hud-btn btn-interactive" (click)="rotateSimulated(0, -3)" title="Tilt Down" style="border: none; border-radius: 50%; cursor: pointer;">
+            <span class="material-symbols-outlined">arrow_downward</span>
           </button>
         </div>
 
         <!-- Viewfinder Actions Footer -->
         <div class="viewfinder-actions">
           <button mat-flat-button color="warn" class="btn-interactive" (click)="retakeLast()" [disabled]="completedCount() === 0">
-            <mat-icon>undo</mat-icon> Retake Last
+            <span class="material-symbols-outlined" style="font-size: 18px; margin-right: 4px; vertical-align: middle;">undo</span> Retake Last
           </button>
           
-          <button mat-fab color="accent" class="btn-interactive manual-capture-btn" (click)="manualCapture()" title="Manual Capture">
-            <mat-icon>photo_camera</mat-icon>
+          <button class="manual-capture-btn btn-interactive" (click)="manualCapture()" title="Manual Capture" style="border: none; display: flex; align-items: center; justify-content: center; cursor: pointer;">
+            <span class="material-symbols-outlined" style="font-size: 28px; color: #0f172a;">photo_camera</span>
           </button>
           
           <button mat-flat-button color="primary" class="btn-interactive" (click)="exitCapture()">
@@ -262,11 +260,11 @@ import { HttpClient } from '@angular/common/http';
           <p>Drag and rotate to review stitching continuity. Save to attach to listing registry.</p>
           <div class="preview-btn-row">
             <button mat-raised-button color="accent" class="btn-interactive glow-border-green save-btn" [disabled]="saving()" (click)="savePanorama()">
-              <mat-icon>{{ saving() ? 'sync' : 'cloud_upload' }}</mat-icon>
+              <span class="material-symbols-outlined" style="font-size: 18px; margin-right: 4px; vertical-align: middle;">{{ saving() ? 'sync' : 'cloud_upload' }}</span>
               {{ saving() ? 'Saving virtual tour...' : 'Save & Attach Tour' }}
             </button>
             <button mat-raised-button color="primary" class="btn-interactive" (click)="restartCapture()">
-              <mat-icon>restart_alt</mat-icon> Retake Tour
+              <span class="material-symbols-outlined" style="font-size: 18px; margin-right: 4px; vertical-align: middle;">restart_alt</span> Retake Tour
             </button>
             <button mat-raised-button color="warn" class="btn-interactive" (click)="exitCapture()">
               Cancel
@@ -299,8 +297,9 @@ export class PanoramaCaptureComponent implements OnInit, OnDestroy {
   readonly isSimulated = signal<boolean>(false);
   
   // Viewfinder live data
-  readonly targets = this.panoramaService.targets;
-  readonly activeTarget = this.panoramaService.getActiveTarget;
+  readonly targets = () => this.panoramaService.targets();
+  readonly activeTarget = () => this.panoramaService.getActiveTarget();
+  readonly completedCount = signal<number>(0);
   readonly currentYaw = signal<number>(0);
   readonly currentPitch = signal<number>(0);
   readonly isAligned = signal<boolean>(false);
@@ -311,7 +310,6 @@ export class PanoramaCaptureComponent implements OnInit, OnDestroy {
 
   // Guidance texts
   readonly guidanceText = signal<string>('Rotate to active target dot');
-  readonly completedCount = signal<number>(0);
 
   // Stitching progress signals
   readonly stitchProgress = signal<number>(0);
@@ -471,7 +469,6 @@ export class PanoramaCaptureComponent implements OnInit, OnDestroy {
 
     if (this.startingYaw === null) {
       this.startingYaw = rawAlpha;
-      // Initialize smoothed quaternion on first reading
       this.currentQuaternion = eulerToQuaternion(0, rawBeta, rawGamma);
     }
 
