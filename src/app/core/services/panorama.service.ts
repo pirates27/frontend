@@ -20,20 +20,36 @@ export class PanoramaService {
     const list: CaptureTarget[] = [];
     let id = 1;
 
-    // Row 1: Middle (Pitch = 0), 12 images at 30 deg steps
+    // 1. Horizontal ring (Pitch = 0), 12 images at 30 deg steps
     for (let i = 0; i < 12; i++) {
       list.push({ id: id++, yaw: i * 30, pitch: 0, completed: false });
     }
 
-    // Row 2: Upper (Pitch = 30), 10 images at 36 deg steps
-    for (let i = 0; i < 10; i++) {
-      list.push({ id: id++, yaw: i * 36, pitch: 30, completed: false });
+    // 2. Upper ring at Pitch = 30, 8 images at 45 deg steps
+    for (let i = 0; i < 8; i++) {
+      list.push({ id: id++, yaw: i * 45, pitch: 30, completed: false });
     }
 
-    // Row 3: Lower (Pitch = -30), 10 images at 36 deg steps
-    for (let i = 0; i < 10; i++) {
-      list.push({ id: id++, yaw: i * 36, pitch: -30, completed: false });
+    // 3. Upper ring at Pitch = 60, 4 images at 90 deg steps
+    for (let i = 0; i < 4; i++) {
+      list.push({ id: id++, yaw: i * 90, pitch: 60, completed: false });
     }
+
+    // 4. Lower ring at Pitch = -30, 8 images at 45 deg steps
+    for (let i = 0; i < 8; i++) {
+      list.push({ id: id++, yaw: i * 45, pitch: -30, completed: false });
+    }
+
+    // 5. Lower ring at Pitch = -60, 4 images at 90 deg steps
+    for (let i = 0; i < 4; i++) {
+      list.push({ id: id++, yaw: i * 90, pitch: -60, completed: false });
+    }
+
+    // 6. Top zenith (Pitch = 90)
+    list.push({ id: id++, yaw: 0, pitch: 90, completed: false });
+
+    // 7. Bottom nadir (Pitch = -90)
+    list.push({ id: id++, yaw: 0, pitch: -90, completed: false });
 
     this.targets.set(list);
     this.activeIndex.set(0);
@@ -65,7 +81,6 @@ export class PanoramaService {
   retakeCurrentTarget(): void {
     const list = [...this.targets()];
     const idx = this.activeIndex();
-    // If all completed, activeIndex might be -1. We let them retake the last one
     const targetIdx = idx !== -1 ? idx : list.length - 1;
     if (targetIdx >= 0 && targetIdx < list.length) {
       list[targetIdx] = { ...list[targetIdx], completed: false, imageData: undefined };
@@ -83,10 +98,10 @@ export class PanoramaService {
   getInstructions(currentYaw: number, currentPitch: number): { text: string; direction: string; aligned: boolean } {
     const active = this.getActiveTarget();
     if (!active) {
-      return { text: 'All targets captured! Stitching panorama...', direction: 'none', aligned: false };
+      return { text: 'All targets captured! Stitching...', direction: 'none', aligned: false };
     }
 
-    // Calculate yaw difference (circular)
+    // Calculate circular yaw difference
     let dYaw = active.yaw - currentYaw;
     if (dYaw > 180) dYaw -= 360;
     if (dYaw < -180) dYaw += 360;
@@ -98,22 +113,22 @@ export class PanoramaService {
     const pitchAligned = Math.abs(dPitch) <= tolerance;
 
     if (yawAligned && pitchAligned) {
-      return { text: 'Hold steady! Capturing...', direction: 'steady', aligned: true };
+      return { text: 'Perfect! Capture now', direction: 'steady', aligned: true };
     }
 
-    // Pitch guidance takes priority to stabilize vertical angle
+    // Pitch guidance takes priority to stabilize vertical horizon first
     if (!pitchAligned) {
       if (dPitch > 0) {
-        return { text: 'Tilt up slightly', direction: 'up', aligned: false };
+        return { text: 'Tilt the phone upward', direction: 'up', aligned: false };
       } else {
-        return { text: 'Tilt down slightly', direction: 'down', aligned: false };
+        return { text: 'Tilt the phone downward', direction: 'down', aligned: false };
       }
     }
 
     // Yaw guidance
     if (!yawAligned) {
       if (dYaw > 0) {
-        return { text: 'Rotate right', direction: 'right', aligned: false };
+        return { text: 'Move slightly right', direction: 'right', aligned: false };
       } else {
         return { text: 'Rotate left', direction: 'left', aligned: false };
       }

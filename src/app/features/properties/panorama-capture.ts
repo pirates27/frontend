@@ -100,7 +100,8 @@ import { HttpClient } from '@angular/common/http';
                    'active': target.id === activeTarget()?.id
                  }"
                  [style.left.px]="target.yaw">
-              {{ target.id }}
+              <mat-icon *ngIf="target.completed" class="radar-check">check</mat-icon>
+              <span *ngIf="!target.completed">{{ target.id }}</span>
             </div>
           </div>
           <div class="radar-cursor"></div>
@@ -109,18 +110,30 @@ import { HttpClient } from '@angular/common/http';
         <!-- Dynamic Screen Flash -->
         <div class="screen-flash" [class.flash-active]="triggerFlash()"></div>
 
-        <!-- 3D Target Dots Projected on Screen -->
+        <!-- Large Floating Green Checkmark Success Overlay on capturing -->
+        <div class="check-success-overlay" *ngIf="triggerCheckSuccess()">
+          <mat-icon class="scale-up-check">check_circle</mat-icon>
+        </div>
+
+        <!-- 3D Target Dots Projected on Screen - Render ONLY the single active target dot -->
         <div class="target-dots-container">
-          <div class="target-dot"
-               *ngFor="let target of targets()"
+          <div class="target-dot active"
+               *ngIf="activeTarget() as target"
                [ngClass]="{
-                 'completed': target.completed,
-                 'active': target.id === activeTarget()?.id,
+                 'aligned': isAligned(),
                  'clamped': isTargetClamped(target)
                }"
                [ngStyle]="getDotStyle(target)">
             <span class="dot-inner"></span>
-            <span class="dot-label">{{ target.id }}</span>
+            <span class="dot-label">
+              <mat-icon *ngIf="isAligned()" class="green-check">check</mat-icon>
+              <ng-container *ngIf="!isAligned()">
+                <mat-icon *ngIf="guidanceDirection() === 'right'">arrow_forward</mat-icon>
+                <mat-icon *ngIf="guidanceDirection() === 'left'">arrow_back</mat-icon>
+                <mat-icon *ngIf="guidanceDirection() === 'up'">arrow_upward</mat-icon>
+                <mat-icon *ngIf="guidanceDirection() === 'down'">arrow_downward</mat-icon>
+              </ng-container>
+            </span>
           </div>
         </div>
 
@@ -129,27 +142,20 @@ import { HttpClient } from '@angular/common/http';
           <div class="crosshair-ring">
             <div class="crosshair-dot"></div>
           </div>
-          <!-- Arrow guidance pointing to active target direction -->
-          <div class="hud-arrow-guidance" *ngIf="activeTarget() && !isAligned()">
-            <mat-icon *ngIf="guidanceDirection() === 'right'">arrow_forward</mat-icon>
-            <mat-icon *ngIf="guidanceDirection() === 'left'">arrow_back</mat-icon>
-            <mat-icon *ngIf="guidanceDirection() === 'up'">arrow_upward</mat-icon>
-            <mat-icon *ngIf="guidanceDirection() === 'down'">arrow_downward</mat-icon>
-          </div>
         </div>
 
         <!-- Float Info Overlay -->
         <div class="hud-panel glass-panel">
           <div class="progress-indicator">
-            <svg class="progress-ring" width="60" height="60">
-              <circle class="progress-ring-bg" stroke="rgba(0,0,0,0.06)" stroke-width="4" fill="transparent" r="24" cx="30" cy="30" />
+            <svg class="progress-ring" width="55" height="55">
+              <circle class="progress-ring-bg" stroke="rgba(0,0,0,0.06)" stroke-width="4" fill="transparent" r="22" cx="27.5" cy="27.5" />
               <circle class="progress-ring-bar" 
                       stroke="var(--accent-primary)" 
                       stroke-width="4" 
                       fill="transparent" 
-                      r="24" 
-                      cx="30" 
-                      cy="30" 
+                      r="22" 
+                      cx="27.5" 
+                      cy="27.5" 
                       [attr.stroke-dasharray]="ringCircumference"
                       [attr.stroke-dashoffset]="ringDashoffset()" />
             </svg>
@@ -157,11 +163,20 @@ import { HttpClient } from '@angular/common/http';
           </div>
 
           <div class="guidance-directions">
-            <span class="instruction-text">{{ guidanceText() }}</span>
-            <span class="guidance-details">
-              Yaw: {{ currentYaw() }}° / Pitch: {{ currentPitch() }}° 
-              (Target: {{ activeTarget()?.yaw || 0 }}° / {{ activeTarget()?.pitch || 0 }}°)
-            </span>
+            <div class="hud-stat-row">
+              <span class="hud-label-dim">Target:</span>
+              <span class="hud-value-highlight">{{ getActiveTargetName() }}</span>
+            </div>
+            <div class="hud-stat-row font-small">
+              <span>Captured: <strong>{{ completedCount() }}</strong></span>
+              <span class="divider">|</span>
+              <span>Remaining: <strong>{{ targets().length - completedCount() }}</strong></span>
+              <span class="divider">|</span>
+              <span class="percent-highlight">{{ completedPercent() }}%</span>
+            </div>
+            <div class="hud-instruction-alert" [class.ready]="isAligned()">
+              {{ isAligned() ? 'Perfect! Capture now' : guidanceText() }}
+            </div>
           </div>
         </div>
 
@@ -217,7 +232,7 @@ import { HttpClient } from '@angular/common/http';
             </svg>
             <div class="spinner-percent">{{ stitchProgress() }}%</div>
           </div>
-          <h3>Compiling Panoramic Virtual Tour</h3>
+          <h3>Generating 360° Panorama...</h3>
           <p class="status-msg">{{ stitchStatus() }}</p>
           <div class="shimmer-bar">
             <div class="shimmer-progress" [style.width]="stitchProgress() + '%'"></div>
@@ -279,6 +294,7 @@ export class PanoramaCaptureComponent implements OnInit, OnDestroy {
   readonly currentPitch = signal<number>(0);
   readonly isAligned = signal<boolean>(false);
   readonly triggerFlash = signal<boolean>(false);
+  readonly triggerCheckSuccess = signal<boolean>(false);
   readonly guidanceDirection = signal<string>('none');
 
   // Guidance texts
@@ -296,11 +312,11 @@ export class PanoramaCaptureComponent implements OnInit, OnDestroy {
   private startingYaw: number | null = null;
 
   // Circular progress calculations
-  readonly ringCircumference = 2 * Math.PI * 24; // 150.79
+  readonly ringCircumference = 2 * Math.PI * 22; // 138.23
   readonly largeRingCircumference = 2 * Math.PI * 50; // 314.15
 
   ringDashoffset() {
-    const total = this.targets().length || 32;
+    const total = this.targets().length || 38;
     const completed = this.completedCount();
     const ratio = completed / total;
     return this.ringCircumference * (1 - ratio);
@@ -309,6 +325,36 @@ export class PanoramaCaptureComponent implements OnInit, OnDestroy {
   largeRingDashoffset() {
     const ratio = this.stitchProgress() / 100;
     return this.largeRingCircumference * (1 - ratio);
+  }
+
+  completedPercent(): number {
+    const total = this.targets().length || 38;
+    const completed = this.completedCount();
+    return Math.round((completed / total) * 100);
+  }
+
+  getTargetName(target: CaptureTarget): string {
+    if (target.pitch === 90) return 'Top';
+    if (target.pitch === -90) return 'Bottom';
+    
+    const yaw = (target.yaw + 360) % 360;
+    
+    if (yaw >= 337.5 || yaw < 22.5) return 'Front';
+    if (yaw >= 22.5 && yaw < 67.5) return 'Front Right';
+    if (yaw >= 67.5 && yaw < 112.5) return 'Right';
+    if (yaw >= 112.5 && yaw < 157.5) return 'Back Right';
+    if (yaw >= 157.5 && yaw < 202.5) return 'Back';
+    if (yaw >= 202.5 && yaw < 247.5) return 'Back Left';
+    if (yaw >= 247.5 && yaw < 292.5) return 'Left';
+    if (yaw >= 292.5 && yaw < 337.5) return 'Front Left';
+    
+    return 'Front';
+  }
+
+  getActiveTargetName(): string {
+    const active = this.activeTarget();
+    if (!active) return 'Completed';
+    return this.getTargetName(active);
   }
 
   ngOnInit(): void {
@@ -378,7 +424,7 @@ export class PanoramaCaptureComponent implements OnInit, OnDestroy {
     if (!active) {
       this.isAligned.set(false);
       this.guidanceDirection.set('none');
-      this.guidanceText.set('Stitching virtual tour...');
+      this.guidanceText.set('Generating virtual tour...');
       return;
     }
 
@@ -457,6 +503,9 @@ export class PanoramaCaptureComponent implements OnInit, OnDestroy {
       this.triggerFlash.set(true);
       setTimeout(() => this.triggerFlash.set(false), 120);
 
+      this.triggerCheckSuccess.set(true);
+      setTimeout(() => this.triggerCheckSuccess.set(false), 500);
+
       if (navigator.vibrate) {
         navigator.vibrate(80);
       }
@@ -481,7 +530,7 @@ export class PanoramaCaptureComponent implements OnInit, OnDestroy {
       } else {
         this.alignLocked = false;
         
-        // Immediately sync alignment for the next active target
+        // Immediately update guidance directions
         const active = this.activeTarget();
         if (active) {
           const guide = this.panoramaService.getInstructions(this.currentYaw(), this.currentPitch());
@@ -682,7 +731,6 @@ export class PanoramaCaptureComponent implements OnInit, OnDestroy {
 
   getRadarTrackTransform(): string {
     const yaw = this.currentYaw();
-    const trackWidth = 360;
     const offset = 180 - yaw;
     return `translateX(${offset}px)`;
   }
