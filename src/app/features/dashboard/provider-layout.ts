@@ -27,7 +27,7 @@ import { interval, Subscription } from 'rxjs';
   animations: [slideInAnimation],
   template: `
     <!-- Top Header -->
-    <mat-toolbar color="primary" class="provider-header">
+    <mat-toolbar color="primary" class="provider-header" *ngIf="!isRegisterPage()">
       <span class="logo">LandLens <span class="role">Provider</span></span>
       <span class="spacer"></span>
       <button mat-icon-button [matMenuTriggerFor]="profileMenu">
@@ -102,13 +102,13 @@ import { interval, Subscription } from 'rxjs';
       min-height: calc(100vh - 56px - 80px);
       position: relative;
       background: 
-        radial-gradient(rgba(15, 23, 42, 0.03) 1px, transparent 1px),
-        var(--bg-primary);
+      radial-gradient(rgba(15, 23, 42, 0.03) 1px, transparent 1px),
+      var(--bg-primary);
       background-size: 24px 24px;
     }
     .provider-content.no-bottom-nav {
       padding-bottom: 16px;
-      min-height: calc(100vh - 56px);
+      min-height: 100vh;
     }
     .bottom-nav {
       position: fixed;
