@@ -13,6 +13,8 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { HttpClient } from '@angular/common/http';
 import { PropertyService, Property } from '../../../core/services/property.service';
 import { environment } from '../../../../environments/environment';
+import { PanoramaCaptureComponent } from '../panorama-capture';
+import { PanoramaViewerComponent } from '../panorama-viewer';
 import mapboxgl from 'mapbox-gl';
 
 @Component({
@@ -30,6 +32,8 @@ import mapboxgl from 'mapbox-gl';
     MatButtonModule,
     MatIconModule,
     MatStepperModule,
+    PanoramaCaptureComponent,
+    PanoramaViewerComponent,
   ],
   template: `
     <div class="property-create-container">
@@ -167,21 +171,23 @@ import mapboxgl from 'mapbox-gl';
               </div>
 
               <div class="upload-section glass-panel">
-                <h4>360° Panorama Image</h4>
-                <p>Upload a panorama image to enable 360° viewing.</p>
-                <input type="file" #panoInput (change)="uploadMedia($event, 'panorama')" accept="image/*" style="display: none" />
-                <button mat-raised-button color="accent" class="btn-interactive" (click)="panoInput.click()" [disabled]="uploadingType() === 'panorama'">
-                  <mat-icon>vrpanoramas</mat-icon>
-                  {{ uploadingType() === 'panorama' ? 'Uploading 360...' : 'Upload 360° Image' }}
+                <h4>360° Panorama Virtual Tour</h4>
+                <p>Capture a stitched 360° equirectangular panorama of the land boundary directly inside your browser.</p>
+                
+                <button type="button" mat-raised-button color="accent" class="btn-interactive glow-border-green" (click)="showCaptureTool.set(true)">
+                  <mat-icon>camera_360</mat-icon>
+                  Launch 360° Capture Tool
                 </button>
 
-                <div class="uploaded-previews" *ngIf="uploadedPanorama()">
-                  <div class="preview-item panorama" style="position: relative;">
-                    <img [src]="uploadedPanorama()" alt="Panorama thumb" />
-                    <span>360° Panorama Uploaded</span>
-                    <button mat-icon-button color="warn" style="position: absolute; top: 4px; right: 4px; background: rgba(0, 0, 0, 0.4); width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;" (click)="uploadedPanorama.set('')">
-                      <mat-icon style="font-size: 18px; width: 18px; height: 18px; color: #ff4d4d; line-height: 18px;">close</mat-icon>
+                <div class="uploaded-previews panorama-preview-container" *ngIf="uploadedPanorama()" style="width: 100%; margin-top: 16px;">
+                  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                    <span style="font-size: 0.85rem; font-weight: 600; color: var(--accent-primary);">✓ Stitched Boundary Virtual Tour Attached</span>
+                    <button type="button" mat-icon-button color="warn" class="btn-interactive" (click)="uploadedPanorama.set('')" title="Remove Virtual Tour">
+                      <mat-icon>delete</mat-icon>
                     </button>
+                  </div>
+                  <div class="preview-viewer-wrapper" style="height: 240px; width: 100%; border-radius: 8px; overflow: hidden; border: 1px solid var(--border-color);">
+                    <app-panorama-viewer [panoramaUrl]="uploadedPanorama()"></app-panorama-viewer>
                   </div>
                 </div>
               </div>
@@ -257,6 +263,12 @@ import mapboxgl from 'mapbox-gl';
           </mat-step>
         </mat-stepper>
       </div>
+
+      <app-panorama-capture
+        *ngIf="showCaptureTool()"
+        (onSave)="onPanoramaCaptured($event)"
+        (onCancel)="showCaptureTool.set(false)">
+      </app-panorama-capture>
     </div>
   `,
   styles: `
@@ -372,6 +384,7 @@ export class PropertyCreateComponent implements OnInit, OnDestroy {
 
   readonly uploadingType = signal<string | null>(null);
   readonly submitting = signal<boolean>(false);
+  readonly showCaptureTool = signal<boolean>(false);
 
   // Form groups
   readonly detailsForm: FormGroup = this.fb.group({
@@ -406,6 +419,12 @@ export class PropertyCreateComponent implements OnInit, OnDestroy {
   private marker: mapboxgl.Marker | null = null;
 
   ngOnInit(): void {}
+
+  onPanoramaCaptured(url: string): void {
+    this.uploadedPanorama.set(url);
+    this.showCaptureTool.set(false);
+    this.snackBar.open('360° Virtual Tour captured and attached successfully!', 'Dismiss', { duration: 3000 });
+  }
 
   ngOnDestroy(): void {
     if (this.map) {
