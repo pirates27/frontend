@@ -296,9 +296,10 @@ export class PanoramaCaptureComponent implements OnInit, OnDestroy {
   readonly sensorPermStatus = signal<boolean>(false);
   readonly isSimulated = signal<boolean>(false);
   
-  // Viewfinder live data
-  readonly targets = () => this.panoramaService.targets();
-  readonly activeTarget = () => this.panoramaService.getActiveTarget();
+  // Viewfinder signals bound directly to service state
+  readonly targets = this.panoramaService.targets;
+  readonly activeIndex = this.panoramaService.activeIndex;
+  readonly activeTarget = computed(() => this.panoramaService.getActiveTarget());
   
   // Computed signals for automated UI states
   readonly completedCount = computed(() => this.targets().filter(t => t.completed).length);
@@ -325,12 +326,14 @@ export class PanoramaCaptureComponent implements OnInit, OnDestroy {
   readonly activeTargetStyle = computed(() => {
     const pt = this.activeTargetProjected();
     if (!pt) return { display: 'none' };
-    return {
+    const style = {
       left: `${pt.x}%`,
       top: `${pt.y}%`,
       opacity: pt.isVisible ? '1' : '0.5',
-      visibility: 'visible'
+      visibility: 'visible' as const
     };
+    console.log('[DEBUG_STYLE] Computed style:', style);
+    return style;
   });
 
   readonly activeTargetClamped = computed(() => {
