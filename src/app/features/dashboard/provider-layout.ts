@@ -1,6 +1,6 @@
-import { Component, inject, OnInit, OnDestroy } from '@angular/core';
+import { Component, inject, OnInit, OnDestroy, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterModule, RouterOutlet, ChildrenOutletContexts, Router } from '@angular/router';
+import { RouterModule, RouterOutlet, ChildrenOutletContexts, Router, NavigationEnd } from '@angular/router';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -176,13 +176,20 @@ export class ProviderLayoutComponent implements OnInit, OnDestroy {
   private readonly contexts = inject(ChildrenOutletContexts);
   private readonly router = inject(Router);
   private pollSubscription?: Subscription;
+  private routerSubscription?: Subscription;
   unreadCount = 0;
 
-  isRegisterPage(): boolean {
-    return this.router.url.includes('/properties/create');
-  }
+  readonly isRegisterPage = signal<boolean>(false);
 
   ngOnInit() {
+    this.isRegisterPage.set(this.router.url.includes('/properties/create'));
+    
+    this.routerSubscription = this.router.events.subscribe(event => {
+      if (event instanceof NavigationEnd) {
+        this.isRegisterPage.set(this.router.url.includes('/properties/create'));
+      }
+    });
+
     this.loadUnreadCount();
     this.pollSubscription = interval(30000).subscribe(() => {
       this.loadUnreadCount();
@@ -192,6 +199,9 @@ export class ProviderLayoutComponent implements OnInit, OnDestroy {
   ngOnDestroy() {
     if (this.pollSubscription) {
       this.pollSubscription.unsubscribe();
+    }
+    if (this.routerSubscription) {
+      this.routerSubscription.unsubscribe();
     }
   }
 
