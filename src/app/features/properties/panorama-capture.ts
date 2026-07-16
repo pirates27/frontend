@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { CameraService } from '../../core/services/camera.service';
 import { OrientationService } from '../../core/services/orientation.service';
 import { PanoramaService, CaptureTarget } from '../../core/services/panorama.service';
-import { ProjectionService } from '../../core/services/projection.service';
+import { ProjectionService, ProjectedPoint } from '../../core/services/projection.service';
 import { StitchService } from '../../core/services/stitch.service';
 import { PanoramaViewerComponent } from './panorama-viewer';
 import { eulerToQuaternion, slerpQuaternions, quaternionToRotationMatrix, compensateScreenOrientation, Quaternion, Matrix3 } from '../../core/utils/camera-math';
@@ -127,9 +127,9 @@ import { HttpClient } from '@angular/common/http';
                *ngIf="activeTarget() as target"
                [ngClass]="{
                  'aligned': isAligned(),
-                 'clamped': isTargetClamped(target)
+                 'clamped': activeTargetClamped()
                }"
-               [ngStyle]="getDotStyle(target)">
+               [ngStyle]="activeTargetStyle()">
             <span class="dot-inner"></span>
             <span class="dot-label">
               <span *ngIf="isAligned()" class="material-symbols-outlined green-check">check</span>
@@ -300,9 +300,43 @@ export class PanoramaCaptureComponent implements OnInit, OnDestroy {
   readonly targets = () => this.panoramaService.targets();
   readonly activeTarget = () => this.panoramaService.getActiveTarget();
   
-  // Computed signal to track completed count automatically
+  // Computed signals for automated UI states
   readonly completedCount = computed(() => this.targets().filter(t => t.completed).length);
-  
+
+  // Signal representing current 3D rotation matrix to drive projections reactively
+  readonly currentRotationMatrixSignal = signal<Matrix3>([
+    [1, 0, 0],
+    [0, 1, 0],
+    [0, 0, 1]
+  ]);
+
+  // Computed signal mapping the active target to screen coordinates
+  readonly activeTargetProjected = computed(() => {
+    const target = this.activeTarget();
+    if (!target) return null;
+    return this.projectionService.projectTarget(
+      target.yaw,
+      target.pitch,
+      this.currentRotationMatrixSignal(),
+      true
+    );
+  });
+
+  readonly activeTargetStyle = computed(() => {
+    const pt = this.activeTargetProjected();
+    if (!pt) return { display: 'none' };
+    return {
+      left: `${pt.x}%`,
+      top: `${pt.y}%`,
+      opacity: pt.isVisible ? '1' : '0.5',
+      visibility: 'visible'
+    };
+  });
+
+  readonly activeTargetClamped = computed(() => {
+    return this.activeTargetProjected()?.isClamped || false;
+  });
+
   readonly currentYaw = signal<number>(0);
   readonly currentPitch = signal<number>(0);
   readonly isAligned = signal<boolean>(false);
@@ -334,12 +368,6 @@ export class PanoramaCaptureComponent implements OnInit, OnDestroy {
 
   private prevYaw = 0;
   private prevPitch = 0;
-
-  private currentRotationMatrix: Matrix3 = [
-    [1, 0, 0],
-    [0, 1, 0],
-    [0, 0, 1]
-  ];
 
   private animationFrameId: number | null = null;
 
@@ -501,12 +529,13 @@ export class PanoramaCaptureComponent implements OnInit, OnDestroy {
     // 4. Compensate for Device Screen Orientation Angle (handling landscape views)
     const screenAngle = window.screen?.orientation?.angle || (window as any).orientation || 0;
     matrix = compensateScreenOrientation(matrix, screenAngle);
-    this.currentRotationMatrix = matrix;
+    this.currentRotationMatrixSignal.set(matrix);
 
     // 5. Extract camera yaw & pitch from 3D camera forward vector
     const fx = -matrix[0][2];
     const fy = -matrix[1][2];
     const fz = -matrix[2][2];
+    const cameraForward = { x: fx, y: fy, z: fz };
     
     let yaw = Math.atan2(fx, -fz) * 180 / Math.PI;
     if (yaw < 0) yaw += 360;
@@ -530,14 +559,20 @@ export class PanoramaCaptureComponent implements OnInit, OnDestroy {
 
     // 7. Process active alignment target instructions
     const active = this.activeTarget();
+    let ptDebug = null;
+    let angularError = 0;
+    let isAligned = false;
+
     if (active) {
       const guide = this.panoramaService.getInstructions(yaw, pitch);
-      const angularError = this.projectionService.getAngularError(active.yaw, active.pitch, matrix);
-      const isAligned = angularError <= 3.0;
+      angularError = this.projectionService.getAngularError(active.yaw, active.pitch, matrix);
+      isAligned = angularError <= 3.0;
 
       this.guidanceText.set(tooFast ? 'Hold Phone Still!' : guide.text);
       this.isAligned.set(!tooFast && isAligned);
       this.guidanceDirection.set(tooFast ? 'steady' : guide.direction);
+
+      ptDebug = this.projectionService.projectTarget(active.yaw, active.pitch, matrix, true);
 
       if (!tooFast && isAligned) {
         if (!this.alignLocked) {
@@ -557,6 +592,18 @@ export class PanoramaCaptureComponent implements OnInit, OnDestroy {
       this.isAligned.set(false);
       this.guidanceDirection.set('none');
     }
+
+    // 8. Debug logger printing all coordinates, vectors, errors and status values every frame
+    console.log('[DEBUG_FRAME]', {
+      orientation: { alpha: this.rawAlpha, beta: this.rawBeta, gamma: this.rawGamma },
+      quaternion: this.currentQuaternion,
+      cameraForward: cameraForward,
+      rotationMatrix: matrix,
+      activeTarget: active ? { id: active.id, yaw: active.yaw, pitch: active.pitch } : null,
+      projection: ptDebug,
+      angularError: angularError,
+      isAligned: isAligned && !tooFast
+    });
 
     this.animationFrameId = requestAnimationFrame(this.renderLoop);
   };
@@ -752,41 +799,6 @@ export class PanoramaCaptureComponent implements OnInit, OnDestroy {
   exitCapture(): void {
     this.cleanupCapture();
     this.onCancel.emit();
-  }
-
-  getDotStyle(target: CaptureTarget) {
-    const active = this.activeTarget();
-    const isActive = active?.id === target.id;
-    
-    // Delegate projection to the dedicated math-based ProjectionService
-    const pt = this.projectionService.projectTarget(
-      target.yaw,
-      target.pitch,
-      this.currentRotationMatrix,
-      isActive
-    );
-
-    // Apply the user's opacity/visibility changes to keep the active target always visible (even offscreen clamped)
-    return {
-      left: `${pt.x}%`,
-      top: `${pt.y}%`,
-      opacity: pt.isVisible ? '1' : '0.5',
-      visibility: 'visible'
-    };
-  }
-
-  isTargetClamped(target: CaptureTarget): boolean {
-    const active = this.activeTarget();
-    if (active?.id !== target.id) return false;
-
-    const pt = this.projectionService.projectTarget(
-      target.yaw,
-      target.pitch,
-      this.currentRotationMatrix,
-      true
-    );
-
-    return pt.isClamped;
   }
 
   getRadarTrackTransform(): string {
