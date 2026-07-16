@@ -1,0 +1,107 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap');
+@import 'mapbox-gl/dist/mapbox-gl.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-slate-50 text-slate-900 antialiased selection:bg-emerald-500/20 selection:text-emerald-900;
+    font-family: 'Outfit', sans-serif;
+  }
+}
+
+@layer utilities {
+  /* Premium Glassmorphism classes */
+  .glass-card {
+    @apply bg-white/70 backdrop-blur-md border border-white/20 shadow-lg;
+  }
+  
+  .glass-card-dark {
+    @apply bg-slate-900/80 backdrop-blur-md border border-slate-800/40 shadow-xl;
+  }
+
+  /* Micro animations */
+  .hover-scale {
+    @apply hover:scale-[1.02] transition-transform duration-300;
+  }
+}
+
+/* Custom scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.3);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.5);
+}
+
+/* ─── Hide Mapbox branding ─────────────────────────────────────────── */
+
+/* Mapbox wordmark logo (bottom-left) and attribution (bottom-right) */
+.mapboxgl-ctrl-logo,
+.mapboxgl-ctrl-attrib,
+.mapboxgl-ctrl-attrib-button,
+.mapboxgl-ctrl-attrib-inner {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+/* Remove the attribution control wrapper so it leaves no gap */
+.mapboxgl-ctrl-bottom-left .mapboxgl-ctrl-attrib,
+.mapboxgl-ctrl-bottom-right .mapboxgl-ctrl-attrib {
+  display: none !important;
+}
+
+/* ─── Mask Google "View on Google Maps" strip inside Street View iframes ── */
+/* We overlay a gradient on the panorama container bottom to visually cover
+   the Google branding strip (cross-origin iframes cannot be styled directly). */
+.panorama-google-mask {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 52px;
+  background: linear-gradient(to top, rgba(15, 23, 42, 0.90) 0%, transparent 100%);
+  z-index: 25;
+  pointer-events: none;
+}
+
+/* Cover the left-side Google attribution / pegman icon area */
+.panorama-google-mask-left {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 120px;
+  height: 80px;
+  background: rgba(15, 23, 42, 0.90);
+  z-index: 25;
+  pointer-events: none;
+  border-top-right-radius: 8px;
+}
+
+/* Cover the right-side Google © copyright text */
+.panorama-google-mask-right {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 220px;
+  height: 52px;
+  background: rgba(15, 23, 42, 0.90);
+  z-index: 25;
+  pointer-events: none;
+  border-top-left-radius: 8px;
+}

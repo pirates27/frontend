@@ -1,159 +1,55 @@
 import { Routes } from '@angular/router';
-import { authGuard, roleGuard, guestGuard } from './core/guards/auth.guard';
-import {
-  ProfileRedirectComponent,
-  NotificationsRedirectComponent,
-  PropertiesRedirectComponent,
-  AiChatRedirectComponent,
-} from './features/dashboard/redirects';
+import { authGuard } from './core/guards/auth.guard';
+import { guestGuard } from './core/guards/guest.guard';
+import { rootRedirectGuard } from './core/guards/root-redirect.guard';
 
 export const routes: Routes = [
-  { path: '', redirectTo: '/dashboard', pathMatch: 'full' },
   {
-    path: 'login',
-    loadComponent: () => import('./features/auth/login/login').then((m) => m.LoginComponent),
-    canActivate: [guestGuard],
+    path: '',
+    canActivate: [rootRedirectGuard],
+    children: []
   },
   {
-    path: 'register',
-    loadComponent: () => import('./features/auth/register/register').then((m) => m.RegisterComponent),
+    path: 'auth/login',
     canActivate: [guestGuard],
+    loadComponent: () => import('./features/auth/login/login.component').then(m => m.LoginComponent)
   },
   {
-    path: 'dashboard',
-    loadComponent: () => import('./features/dashboard/dashboard-redirect').then((m) => m.DashboardRedirectComponent),
+    path: 'auth/register',
+    canActivate: [guestGuard],
+    loadComponent: () => import('./features/auth/register/register.component').then(m => m.RegisterComponent)
+  },
+  {
+    path: 'buyer',
+    loadComponent: () => import('./features/buyer-dashboard/buyer-dashboard.component').then(m => m.BuyerDashboardComponent),
     canActivate: [authGuard],
+    data: { roles: ['BUYER'] }
   },
-
-  // Buyer routes
   {
-    path: 'dashboard/buyer',
-    loadComponent: () => import('./features/dashboard/buyer-layout').then((m) => m.BuyerLayoutComponent),
-    canActivate: [authGuard, roleGuard(['BUYER'])],
-    children: [
-      {
-        path: '',
-        loadComponent: () => import('./features/dashboard/buyer-dashboard/buyer-dashboard').then((m) => m.BuyerDashboardComponent),
-      },
-      {
-        path: 'saved',
-        loadComponent: () => import('./features/dashboard/buyer-dashboard/buyer-saved').then((m) => m.BuyerSavedComponent),
-      },
-      {
-        path: 'visits',
-        loadComponent: () => import('./features/dashboard/buyer-dashboard/buyer-visits').then((m) => m.BuyerVisitsComponent),
-      },
-      {
-        path: 'profile',
-        loadComponent: () => import('./features/profile/profile').then((m) => m.ProfileComponent),
-      },
-      {
-        path: 'notifications',
-        loadComponent: () => import('./features/notifications/notifications').then((m) => m.NotificationsComponent),
-      },
-      {
-        path: 'ai-chat',
-        loadComponent: () => import('./features/ai-chat/chat-assistant/chat-assistant').then((m) => m.ChatAssistantComponent),
-      },
-      {
-        path: 'properties/:id',
-        loadComponent: () => import('./features/properties/property-detail/property-detail').then((m) => m.PropertyDetailComponent),
-      },
-    ],
+    path: 'provider',
+    loadComponent: () => import('./features/provider-dashboard/provider-dashboard.component').then(m => m.ProviderDashboardComponent),
+    canActivate: [authGuard],
+    data: { roles: ['PROVIDER'] }
   },
-
-  // Provider routes
   {
-    path: 'dashboard/provider',
-    loadComponent: () => import('./features/dashboard/provider-layout').then((m) => m.ProviderLayoutComponent),
-    canActivate: [authGuard, roleGuard(['PROVIDER'])],
-    children: [
-      {
-        path: '',
-        loadComponent: () => import('./features/dashboard/provider-dashboard/provider-dashboard').then((m) => m.ProviderDashboardComponent),
-      },
-      {
-        path: 'visits',
-        loadComponent: () => import('./features/dashboard/provider-dashboard/provider-visits').then((m) => m.ProviderVisitsComponent),
-      },
-      {
-        path: 'api-keys',
-        loadComponent: () => import('./features/dashboard/provider-dashboard/provider-api-keys').then((m) => m.ProviderApiKeysComponent),
-      },
-      {
-        path: 'profile',
-        loadComponent: () => import('./features/profile/profile').then((m) => m.ProfileComponent),
-      },
-      {
-        path: 'notifications',
-        loadComponent: () => import('./features/notifications/notifications').then((m) => m.NotificationsComponent),
-      },
-      {
-        path: 'ai-chat',
-        loadComponent: () => import('./features/ai-chat/chat-assistant/chat-assistant').then((m) => m.ChatAssistantComponent),
-      },
-      {
-        path: 'properties/create',
-        loadComponent: () => import('./features/properties/property-create/property-create').then((m) => m.PropertyCreateComponent),
-      },
-      {
-        path: 'properties/:id',
-        loadComponent: () => import('./features/properties/property-detail/property-detail').then((m) => m.PropertyDetailComponent),
-      },
-    ],
+    path: 'officer',
+    loadComponent: () => import('./features/govt-dashboard/govt-dashboard.component').then(m => m.GovtDashboardComponent),
+    canActivate: [authGuard],
+    data: { roles: ['GOVERNMENT_OFFICER', 'ADMIN'] }
   },
-
-  // Officer routes
   {
-    path: 'dashboard/officer',
-    loadComponent: () => import('./features/dashboard/officer-layout').then((m) => m.OfficerLayoutComponent),
-    canActivate: [authGuard, roleGuard(['GOVERNMENT_OFFICER'])],
-    children: [
-      {
-        path: '',
-        loadComponent: () => import('./features/dashboard/officer-dashboard/officer-dashboard').then((m) => m.OfficerDashboardComponent),
-      },
-      {
-        path: 'profile',
-        loadComponent: () => import('./features/profile/profile').then((m) => m.ProfileComponent),
-      },
-      {
-        path: 'notifications',
-        loadComponent: () => import('./features/notifications/notifications').then((m) => m.NotificationsComponent),
-      },
-      {
-        path: 'properties/:id',
-        loadComponent: () => import('./features/properties/property-detail/property-detail').then((m) => m.PropertyDetailComponent),
-      },
-    ],
+    path: 'admin',
+    loadComponent: () => import('./features/admin-dashboard/admin-dashboard.component').then(m => m.AdminDashboardComponent),
+    canActivate: [authGuard],
+    data: { roles: ['ADMIN', 'GOVERNMENT_OFFICER'] }
   },
-
-  // Admin routes
   {
-    path: 'dashboard/admin',
-    loadComponent: () => import('./features/dashboard/admin-layout').then((m) => m.AdminLayoutComponent),
-    canActivate: [authGuard, roleGuard(['ADMIN'])],
-    children: [
-      {
-        path: '',
-        loadComponent: () => import('./features/dashboard/admin-dashboard/admin-dashboard').then((m) => m.AdminDashboardComponent),
-      },
-      {
-        path: 'profile',
-        loadComponent: () => import('./features/profile/profile').then((m) => m.ProfileComponent),
-      },
-      {
-        path: 'notifications',
-        loadComponent: () => import('./features/notifications/notifications').then((m) => m.NotificationsComponent),
-      },
-    ],
+    path: 'properties/:id',
+    loadComponent: () => import('./features/property-detail/property-detail.component').then(m => m.PropertyDetailComponent),
+    canActivate: [authGuard]
   },
-
-  // Redirects for legacy/generic routes
-  { path: 'profile', component: ProfileRedirectComponent, canActivate: [authGuard] },
-  { path: 'notifications', component: NotificationsRedirectComponent, canActivate: [authGuard] },
-  { path: 'properties/:id', component: PropertiesRedirectComponent, canActivate: [authGuard] },
-  { path: 'ai-chat', component: AiChatRedirectComponent, canActivate: [authGuard] },
-
-  { path: '**', redirectTo: '/dashboard' },
+  {
+    path: '**',
+    redirectTo: 'auth/login'
+  }
 ];

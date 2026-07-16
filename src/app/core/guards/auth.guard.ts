@@ -1,41 +1,34 @@
-import { inject } from '@angular/core';
 import { CanActivateFn, Router } from '@angular/router';
+import { inject } from '@angular/core';
 import { AuthService } from '../services/auth.service';
 
 export const authGuard: CanActivateFn = (route, state) => {
   const authService = inject(AuthService);
   const router = inject(Router);
 
-  if (authService.isAuthenticated()) {
+  const hasSession = authService.isLoggedIn || Boolean(localStorage.getItem('access_token') || localStorage.getItem('refresh_token') || localStorage.getItem('user_role'));
+
+  if (hasSession) {
+    const requiredRoles = route.data['roles'] as string[];
+    const role = (authService.userRole() || localStorage.getItem('user_role')) as any;
+    
+    if (requiredRoles && requiredRoles.length > 0) {
+      if (!role || !requiredRoles.includes(role)) {
+        // User has a session but not authorized for this specific route.
+        // Redirect them to their appropriate dashboard instead of kicking to login!
+        if (role) {
+          authService.redirectBasedOnRole(role);
+        } else {
+          const fallbackRole = (localStorage.getItem('user_role') || 'BUYER') as any;
+          authService.redirectBasedOnRole(fallbackRole);
+        }
+        return false;
+      }
+    }
     return true;
   }
 
-  router.navigate(['/login']);
+  // Not logged in, redirect to login page with return URL
+  router.navigate(['/auth/login'], { queryParams: { returnUrl: state.url } });
   return false;
-};
-
-export const roleGuard = (allowedRoles: string[]): CanActivateFn => {
-  return () => {
-    const authService = inject(AuthService);
-    const router = inject(Router);
-    const userRole = authService.getUserRole();
-
-    if (authService.isAuthenticated() && userRole && allowedRoles.includes(userRole)) {
-      return true;
-    }
-
-    router.navigate(['/login']);
-    return false;
-  };
-};
-
-export const guestGuard: CanActivateFn = (route, state) => {
-  const authService = inject(AuthService);
-  const router = inject(Router);
-
-  if (authService.isAuthenticated()) {
-    router.navigate(['/dashboard']);
-    return false;
-  }
-  return true;
 };

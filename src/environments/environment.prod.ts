@@ -1,5 +1,5 @@
 export const environment = {
-  production: false,
+  production: true,
   apiBaseUrl: 'http://landlens-production-alb-1919392235.ap-south-1.elb.amazonaws.com',
   mapbox: {
     accessToken: 'YOUR_MAPBOX_PUBLIC_ACCESS_TOKEN',

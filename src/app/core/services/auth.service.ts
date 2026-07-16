@@ -1,212 +1,186 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, tap, catchError, throwError } from 'rxjs';
 import { Router } from '@angular/router';
+import { Observable, tap, catchError, throwError, BehaviorSubject, switchMap } from 'rxjs';
 import { environment } from '../../../environments/environment';
+import { RoleType, User } from '../models/property.models';
 
-export interface User {
-  id: string;
-  email: string;
-  firstName: string;
-  lastName: string;
-  phoneNumber?: string;
-  role: 'BUYER' | 'PROVIDER' | 'GOVERNMENT_OFFICER' | 'ADMIN';
-}
-
-export interface LoginResponse {
+interface LoginResponse {
   accessToken: string;
   refreshToken: string;
-  role: 'BUYER' | 'PROVIDER' | 'GOVERNMENT_OFFICER' | 'ADMIN';
+  role: RoleType;
   email: string;
-}
-
-// Cookie Helpers
-function setCookie(name: string, value: string, days: number = 7) {
-  const date = new Date();
-  date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
-  const expires = "; expires=" + date.toUTCString();
-  document.cookie = name + "=" + encodeURIComponent(value || "") + expires + "; path=/; SameSite=Strict; Secure";
-}
-
-function getCookie(name: string): string | null {
-  const nameEQ = name + "=";
-  const ca = document.cookie.split(';');
-  for (let i = 0; i < ca.length; i++) {
-    let c = ca[i];
-    while (c.charAt(0) === ' ') c = c.substring(1);
-    if (c.indexOf(nameEQ) === 0) return decodeURIComponent(c.substring(nameEQ.length));
-  }
-  return null;
-}
-
-function eraseCookie(name: string) {
-  document.cookie = name + '=; Max-Age=-99999999; path=/; SameSite=Strict; Secure';
 }
 
 @Injectable({
-  providedIn: 'root',
+  providedIn: 'root'
 })
 export class AuthService {
-  private readonly http = inject(HttpClient);
-  private readonly router = inject(Router);
-  private readonly baseUrl = environment.apiUrl;
+  private http = inject(HttpClient);
+  private router = inject(Router);
 
-  // Signals for modern Angular state management
-  readonly currentUser = signal<User | null>(null);
-  readonly isAuthenticated = signal<boolean>(false);
+  // Angular Signals for reactive state
+  currentUser = signal<User | null>(null);
+  accessToken = signal<string | null>(localStorage.getItem('access_token'));
+  refreshTokenSignal = signal<string | null>(localStorage.getItem('refresh_token'));
+  userRole = signal<RoleType | null>(localStorage.getItem('user_role') as RoleType);
 
   constructor() {
-    this.loadSession();
+    // If we have an access token on start, try to load profile silently
+    if (this.accessToken() || localStorage.getItem('access_token')) {
+      setTimeout(() => {
+        this.getProfile().subscribe({
+          error: (err) => {
+            console.warn('Silent getProfile check on startup/reload encountered error. Retaining session across HMR:', err);
+            // Do NOT call clearSession() here during HMR or temporary network delays!
+          }
+        });
+      }, 0);
+    }
   }
 
-  register(payload: any): Observable<string> {
-    return this.http.post<string>(`${this.baseUrl}/api/auth/register`, payload, {
-      responseType: 'text' as 'json',
+  // Register
+  register(userData: any): Observable<any> {
+    return this.http.post(`${environment.apiBaseUrl}/api/auth/register`, userData, {
+      responseType: 'text' // API returns plain text on successful registration
     });
   }
 
-  login(payload: any): Observable<LoginResponse> {
-    return this.http.post<LoginResponse>(`${this.baseUrl}/api/auth/login`, payload).pipe(
-      tap((res) => {
-        // Save to localStorage
-        localStorage.setItem('accessToken', res.accessToken);
-        localStorage.setItem('refreshToken', res.refreshToken);
-        localStorage.setItem('userEmail', res.email);
-        localStorage.setItem('userRole', res.role);
-
-        // Save to cookies
-        setCookie('accessToken', res.accessToken);
-        setCookie('refreshToken', res.refreshToken);
-        setCookie('userEmail', res.email);
-        setCookie('userRole', res.role);
-
-        this.isAuthenticated.set(true);
-        this.fetchProfile().subscribe();
+  // Login
+  login(credentials: any): Observable<LoginResponse> {
+    return this.http.post<LoginResponse>(`${environment.apiBaseUrl}/api/auth/login`, credentials).pipe(
+      tap(res => {
+        this.setSession(res);
+      }),
+      switchMap(res => {
+        // Load the full profile details immediately after successful login
+        return this.getProfile().pipe(
+          tap(() => {
+            this.redirectBasedOnRole(res.role);
+          }),
+          switchMap(() => [res]) // resolve with the login response
+        );
       })
     );
   }
 
-  fetchProfile(): Observable<User> {
-    return this.http.get<User>(`${this.baseUrl}/api/users/me`).pipe(
-      tap((user) => {
+  // Load user profile
+  getProfile(): Observable<User> {
+    return this.http.get<User>(`${environment.apiBaseUrl}/api/users/me`).pipe(
+      tap(user => {
         this.currentUser.set(user);
-        this.isAuthenticated.set(true);
-      }),
-      catchError((err) => {
-        if (err.status === 401 || err.status === 403) {
-          this.logout();
+        this.userRole.set(user.role);
+        localStorage.setItem('user_role', user.role);
+      })
+    );
+  }
+
+  // Logout
+  logout(): Observable<any> {
+    const token = this.refreshTokenSignal();
+    this.clearSession();
+    this.router.navigate(['/auth/login']);
+
+    if (token) {
+      // Send logout request with refresh token in body to revoke the session
+      return this.http.post(`${environment.apiBaseUrl}/api/auth/logout`, {
+        refreshToken: token
+      }, {
+        headers: { Authorization: `Bearer ${token}` },
+        responseType: 'text'
+      }).pipe(
+        catchError(err => throwError(() => err))
+      );
+    }
+    return new Observable(sub => sub.complete());
+  }
+
+  // Refresh Token
+  refreshAccessToken(): Observable<any> {
+    const token = this.refreshTokenSignal();
+    if (!token) {
+      this.clearSession();
+      return throwError(() => new Error('No refresh token available'));
+    }
+
+    return this.http.post<any>(`${environment.apiBaseUrl}/api/auth/refresh`, {
+      refreshToken: token
+    }).pipe(
+      tap(res => {
+        const newAccessToken = res.accessToken || res.token;
+        if (newAccessToken) {
+          this.accessToken.set(newAccessToken);
+          localStorage.setItem('access_token', newAccessToken);
+          if (res.refreshToken) {
+            this.refreshTokenSignal.set(res.refreshToken);
+            localStorage.setItem('refresh_token', res.refreshToken);
+          }
         }
+      }),
+      catchError(err => {
+        this.clearSession();
         return throwError(() => err);
       })
     );
   }
 
-  getAllUsers(): Observable<User[]> {
-    return this.http.get<User[]>(`${this.baseUrl}/api/users`);
+  private setSession(authResult: LoginResponse): void {
+    this.accessToken.set(authResult.accessToken);
+    this.refreshTokenSignal.set(authResult.refreshToken);
+    this.userRole.set(authResult.role);
+
+    localStorage.setItem('access_token', authResult.accessToken);
+    localStorage.setItem('refresh_token', authResult.refreshToken);
+    localStorage.setItem('user_role', authResult.role);
   }
 
-  refreshToken(): Observable<LoginResponse> {
-    const refreshToken = this.getRefreshToken();
-    if (!refreshToken) {
-      this.logout();
-      return throwError(() => new Error('No refresh token available'));
-    }
-    return this.http.post<LoginResponse>(`${this.baseUrl}/api/auth/refresh`, { refreshToken }).pipe(
-      tap((res) => {
-        localStorage.setItem('accessToken', res.accessToken);
-        setCookie('accessToken', res.accessToken);
-        if (res.refreshToken) {
-          localStorage.setItem('refreshToken', res.refreshToken);
-          setCookie('refreshToken', res.refreshToken);
-        }
-      })
-    );
-  }
-
-  logout(): void {
-    const refreshToken = this.getRefreshToken();
-    if (refreshToken) {
-      this.http.post(`${this.baseUrl}/api/auth/logout`, { refreshToken }).subscribe({
-        next: () => {},
-        error: () => {},
-      });
-    }
-
-    // Clear Storage
-    localStorage.clear();
-    sessionStorage.clear();
-
-    // Erase Cookies
-    eraseCookie('accessToken');
-    eraseCookie('refreshToken');
-    eraseCookie('userEmail');
-    eraseCookie('userRole');
-
+  private clearSession(): void {
+    this.accessToken.set(null);
+    this.refreshTokenSignal.set(null);
+    this.userRole.set(null);
     this.currentUser.set(null);
-    this.isAuthenticated.set(false);
-    this.router.navigate(['/login']);
+
+    localStorage.removeItem('access_token');
+    localStorage.removeItem('refresh_token');
+    localStorage.removeItem('user_role');
   }
 
-  getAccessToken(): string | null {
-    let token = localStorage.getItem('accessToken');
-    if (!token) {
-      token = getCookie('accessToken');
-      if (token) {
-        localStorage.setItem('accessToken', token);
-      }
+  redirectBasedOnRole(role: RoleType): void {
+    switch (role) {
+      case 'ADMIN':
+        this.router.navigate(['/admin']);
+        break;
+      case 'GOVERNMENT_OFFICER':
+        this.router.navigate(['/officer']);
+        break;
+      case 'PROVIDER':
+        this.router.navigate(['/provider']);
+        break;
+      case 'BUYER':
+      default:
+        this.router.navigate(['/buyer']);
+        break;
     }
-    return token;
   }
 
-  getRefreshToken(): string | null {
-    let token = localStorage.getItem('refreshToken');
-    if (!token) {
-      token = getCookie('refreshToken');
-      if (token) {
-        localStorage.setItem('refreshToken', token);
-      }
-    }
-    return token;
+  // Convenience state helpers
+  get isLoggedIn(): boolean {
+    return Boolean(this.accessToken() || localStorage.getItem('access_token') || localStorage.getItem('refresh_token') || localStorage.getItem('user_role'));
   }
 
-  getUserRole(): string | null {
-    let role = localStorage.getItem('userRole');
-    if (!role) {
-      role = getCookie('userRole');
-      if (role) {
-        localStorage.setItem('userRole', role);
-      }
-    }
-    return role;
+  get isAdmin(): boolean {
+    return this.userRole() === 'ADMIN';
   }
 
-  private loadSession(): void {
-    const token = this.getAccessToken();
-    const role = this.getUserRole();
-    let email = localStorage.getItem('userEmail');
-    if (!email) {
-      email = getCookie('userEmail');
-      if (email) {
-        localStorage.setItem('userEmail', email);
-      }
-    }
+  get isGovtOfficer(): boolean {
+    return this.userRole() === 'GOVERNMENT_OFFICER';
+  }
 
-    if (token && role && email) {
-      this.isAuthenticated.set(true);
-      this.currentUser.set({
-        id: '',
-        email,
-        firstName: '',
-        lastName: '',
-        role: role as any,
-      });
-      
-      this.fetchProfile().subscribe({
-        error: (err) => {
-          // Do NOT log out for connection timeouts or database restarts.
-          console.warn('Initial session check failed (transient network or database start):', err);
-        },
-      });
-    }
+  get isProvider(): boolean {
+    return this.userRole() === 'PROVIDER';
+  }
+
+  get isBuyer(): boolean {
+    return this.userRole() === 'BUYER';
   }
 }
