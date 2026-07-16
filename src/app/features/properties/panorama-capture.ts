@@ -67,7 +67,7 @@ import { HttpClient } from '@angular/common/http';
       </div>
 
       <!-- Step 2: Camera Capture Viewfinder -->
-      <div class="viewfinder-container" *ngIf="step() === 'capturing'">
+      <div class="viewfinder-container" *ngIf="step() === 'capturing'" (click)="onViewfinderClick($event)">
         <!-- Live Video Element -->
         <video #videoElement *ngIf="!isSimulated()" autoplay playsinline muted></video>
 
@@ -78,7 +78,7 @@ import { HttpClient } from '@angular/common/http';
           <div class="horizon-line"></div>
           <div class="simulation-badge">
             <mat-icon>terminal</mat-icon>
-            <span>SIMULATOR ACTIVE - Use keyboard ARROWS or HUD buttons to rotate</span>
+            <span>SIMULATOR ACTIVE - Use keyboard ARROWS, tap screen, or HUD buttons to rotate & click</span>
           </div>
         </div>
 
@@ -129,13 +129,20 @@ import { HttpClient } from '@angular/common/http';
           <div class="crosshair-ring">
             <div class="crosshair-dot"></div>
           </div>
+          <!-- Arrow guidance pointing to active target direction -->
+          <div class="hud-arrow-guidance" *ngIf="activeTarget() && !isAligned()">
+            <mat-icon *ngIf="guidanceDirection() === 'right'">arrow_forward</mat-icon>
+            <mat-icon *ngIf="guidanceDirection() === 'left'">arrow_back</mat-icon>
+            <mat-icon *ngIf="guidanceDirection() === 'up'">arrow_upward</mat-icon>
+            <mat-icon *ngIf="guidanceDirection() === 'down'">arrow_downward</mat-icon>
+          </div>
         </div>
 
         <!-- Float Info Overlay -->
         <div class="hud-panel glass-panel">
           <div class="progress-indicator">
             <svg class="progress-ring" width="60" height="60">
-              <circle class="progress-ring-bg" stroke="rgba(255,255,255,0.1)" stroke-width="4" fill="transparent" r="24" cx="30" cy="30" />
+              <circle class="progress-ring-bg" stroke="rgba(0,0,0,0.06)" stroke-width="4" fill="transparent" r="24" cx="30" cy="30" />
               <circle class="progress-ring-bar" 
                       stroke="var(--accent-primary)" 
                       stroke-width="4" 
@@ -197,7 +204,7 @@ import { HttpClient } from '@angular/common/http';
         <div class="stitching-loader">
           <div class="spinner-wrapper">
             <svg class="progress-ring-large" width="120" height="120">
-              <circle class="progress-ring-bg" stroke="rgba(255,255,255,0.1)" stroke-width="6" fill="transparent" r="50" cx="60" cy="60" />
+              <circle class="progress-ring-bg" stroke="rgba(0,0,0,0.06)" stroke-width="6" fill="transparent" r="50" cx="60" cy="60" />
               <circle class="progress-ring-bar" 
                       stroke="var(--accent-primary)" 
                       stroke-width="6" 
@@ -272,6 +279,7 @@ export class PanoramaCaptureComponent implements OnInit, OnDestroy {
   readonly currentPitch = signal<number>(0);
   readonly isAligned = signal<boolean>(false);
   readonly triggerFlash = signal<boolean>(false);
+  readonly guidanceDirection = signal<string>('none');
 
   // Guidance texts
   readonly guidanceText = signal<string>('Rotate to active target dot');
@@ -304,7 +312,6 @@ export class PanoramaCaptureComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
-    // Sync viewfinder with service updates
     this.panoramaService.initializeTargets();
   }
 
@@ -314,11 +321,9 @@ export class PanoramaCaptureComponent implements OnInit, OnDestroy {
 
   async grantPermissions(): Promise<void> {
     try {
-      // 1. Request camera
       const stream = await this.cameraService.startCamera();
       this.cameraPermStatus.set(true);
 
-      // 2. Request Gyro orientation
       const sensorOk = await this.orientationService.requestPermission();
       this.sensorPermStatus.set(sensorOk);
 
@@ -342,7 +347,6 @@ export class PanoramaCaptureComponent implements OnInit, OnDestroy {
     this.sensorPermStatus.set(true);
     this.step.set('capturing');
     setTimeout(() => {
-      // Bind key inputs for simulation rotation
       window.addEventListener('keydown', this.onKeyDownSimulation);
     }, 200);
   }
@@ -352,8 +356,6 @@ export class PanoramaCaptureComponent implements OnInit, OnDestroy {
     if (video) {
       video.srcObject = this.cameraService.stream();
     }
-
-    // Monitor orientation to update HUD guidance and trigger auto-capture
     window.addEventListener('deviceorientation', this.onOrientationUpdate);
   }
 
@@ -363,7 +365,6 @@ export class PanoramaCaptureComponent implements OnInit, OnDestroy {
     const rawYaw = Math.round(event.alpha || 0);
     const pitch = Math.round(event.beta || 0);
 
-    // Dynamic initial bearing calibration
     if (this.startingYaw === null) {
       this.startingYaw = rawYaw;
     }
@@ -376,6 +377,7 @@ export class PanoramaCaptureComponent implements OnInit, OnDestroy {
     const active = this.activeTarget();
     if (!active) {
       this.isAligned.set(false);
+      this.guidanceDirection.set('none');
       this.guidanceText.set('Stitching virtual tour...');
       return;
     }
@@ -383,18 +385,16 @@ export class PanoramaCaptureComponent implements OnInit, OnDestroy {
     const guide = this.panoramaService.getInstructions(yaw, pitch);
     this.guidanceText.set(guide.text);
     this.isAligned.set(guide.aligned);
+    this.guidanceDirection.set(guide.direction);
 
-    // Auto capture when aligned
     if (guide.aligned) {
       if (!this.alignLocked) {
         this.alignLocked = true;
-        // Hold orientation for 400ms before auto-firing frame capture
         this.autoCaptureTimeout = setTimeout(() => {
           this.executeFrameCapture();
         }, 400);
       }
     } else {
-      // User shifted away, reset capture locks
       this.alignLocked = false;
       if (this.autoCaptureTimeout) {
         clearTimeout(this.autoCaptureTimeout);
@@ -434,8 +434,8 @@ export class PanoramaCaptureComponent implements OnInit, OnDestroy {
     const guide = this.panoramaService.getInstructions(yaw, pitch);
     this.guidanceText.set(guide.text);
     this.isAligned.set(guide.aligned);
+    this.guidanceDirection.set(guide.direction);
 
-    // Auto capture when aligned
     if (guide.aligned) {
       if (!this.alignLocked) {
         this.alignLocked = true;
@@ -454,16 +454,13 @@ export class PanoramaCaptureComponent implements OnInit, OnDestroy {
 
   private executeFrameCapture(): void {
     try {
-      // 1. Flash effect
       this.triggerFlash.set(true);
       setTimeout(() => this.triggerFlash.set(false), 120);
 
-      // 2. Play feedback sound or trigger haptic vib
       if (navigator.vibrate) {
         navigator.vibrate(80);
       }
 
-      // 3. Take snapshot and mark target completed
       let frameData = '';
       if (this.isSimulated()) {
         frameData = this.generateSimulatedFrame(this.currentYaw(), this.currentPitch(), this.completedCount() + 1);
@@ -476,16 +473,24 @@ export class PanoramaCaptureComponent implements OnInit, OnDestroy {
 
       this.panoramaService.completeActiveTarget(frameData);
 
-      // 4. Update progress
       const completed = this.targets().filter(t => t.completed).length;
       this.completedCount.set(completed);
 
-      // Check if all targets completed
       if (completed === this.targets().length) {
         this.startStitching();
       } else {
-        // Unlock alignment for next step target
         this.alignLocked = false;
+        
+        // Immediately sync alignment for the next active target
+        const active = this.activeTarget();
+        if (active) {
+          const guide = this.panoramaService.getInstructions(this.currentYaw(), this.currentPitch());
+          this.guidanceText.set(guide.text);
+          this.isAligned.set(guide.aligned);
+          this.guidanceDirection.set(guide.direction);
+        } else {
+          this.guidanceDirection.set('none');
+        }
       }
     } catch (err) {
       console.error('Frame capture failed:', err);
@@ -499,7 +504,6 @@ export class PanoramaCaptureComponent implements OnInit, OnDestroy {
     canvas.height = 480;
     const ctx = canvas.getContext('2d');
     if (ctx) {
-      // Sky/Ground gradient
       const grad = ctx.createLinearGradient(0, 0, 0, 480);
       grad.addColorStop(0, '#0284c7');
       grad.addColorStop(0.5, '#bae6fd');
@@ -508,7 +512,6 @@ export class PanoramaCaptureComponent implements OnInit, OnDestroy {
       ctx.fillStyle = grad;
       ctx.fillRect(0, 0, 640, 480);
 
-      // Print details
       ctx.fillStyle = '#ffffff';
       ctx.font = 'bold 24px sans-serif';
       ctx.textAlign = 'center';
@@ -518,7 +521,6 @@ export class PanoramaCaptureComponent implements OnInit, OnDestroy {
       ctx.font = '20px sans-serif';
       ctx.fillText(`Frame #${index} | Yaw: ${yaw}° | Pitch: ${pitch}°`, 320, 260);
 
-      // Draw boundary grid
       ctx.strokeStyle = 'rgba(255,255,255,0.4)';
       ctx.lineWidth = 4;
       ctx.strokeRect(20, 20, 600, 440);
@@ -530,6 +532,19 @@ export class PanoramaCaptureComponent implements OnInit, OnDestroy {
 
   manualCapture(): void {
     this.executeFrameCapture();
+  }
+
+  onViewfinderClick(event: MouseEvent): void {
+    const target = event.target as HTMLElement;
+    if (
+      target.closest('.viewfinder-actions') || 
+      target.closest('.hud-panel') || 
+      target.closest('.simulator-hud-controls') || 
+      target.closest('.compass-radar-strip')
+    ) {
+      return;
+    }
+    this.manualCapture();
   }
 
   retakeLast(): void {
@@ -567,7 +582,6 @@ export class PanoramaCaptureComponent implements OnInit, OnDestroy {
 
     this.saving.set(true);
 
-    // Upload to Cloudinary using existing credentials
     const formData = new FormData();
     formData.append('file', imageBase64);
     formData.append('upload_preset', environment.cloudinaryUploadPreset);
@@ -580,7 +594,6 @@ export class PanoramaCaptureComponent implements OnInit, OnDestroy {
         },
         error: () => {
           this.saving.set(false);
-          // Fallback mockup local image url if upload fails or offline
           const mockName = `stitched_pano_${Date.now()}.jpg`;
           const fallbackUrl = `http://storage.landlens.com/panoramas/${mockName}`;
           this.snackBar.open('Direct Cloudinary upload failed. Mocking panorama path.', 'Dismiss', { duration: 3000 });
@@ -597,6 +610,7 @@ export class PanoramaCaptureComponent implements OnInit, OnDestroy {
     this.step.set('capturing');
     this.alignLocked = false;
     this.startingYaw = null;
+    this.guidanceDirection.set('none');
     setTimeout(() => {
       if (this.isSimulated()) {
         this.startSimulationMode();
@@ -623,7 +637,6 @@ export class PanoramaCaptureComponent implements OnInit, OnDestroy {
 
     const dPitch = target.pitch - pitch;
 
-    // Viewport field of view: 60 deg horizontal, 40 deg vertical
     const fovX = 60;
     const fovY = 40;
 
@@ -633,7 +646,6 @@ export class PanoramaCaptureComponent implements OnInit, OnDestroy {
     let isVisible = x >= 0 && x <= 100 && y >= 0 && y <= 100;
 
     if (isActive && !isVisible) {
-      // Clamp active target dot to viewport boundaries so it acts as a rotation compass pointer
       x = Math.max(5, Math.min(95, x));
       y = Math.max(5, Math.min(95, y));
       isVisible = true;
@@ -670,17 +682,16 @@ export class PanoramaCaptureComponent implements OnInit, OnDestroy {
 
   getRadarTrackTransform(): string {
     const yaw = this.currentYaw();
-    const trackWidth = 360; // 1px per degree
-    const offset = 180 - yaw; // shift to center on current yaw
+    const trackWidth = 360;
+    const offset = 180 - yaw;
     return `translateX(${offset}px)`;
   }
 
   getSimulatedSkyTransform(): string {
     const yaw = this.currentYaw();
     const pitch = this.currentPitch();
-    // Offset background mapping to simulate yaw-rotation and pitch-tilting
-    const xOffset = yaw * -4; // 4px per degree horizontal
-    const yOffset = pitch * 3;  // 3px per degree vertical
+    const xOffset = yaw * -4;
+    const yOffset = pitch * 3;
     return `translate(${xOffset}px, ${yOffset}px)`;
   }
 
