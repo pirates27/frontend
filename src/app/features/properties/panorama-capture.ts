@@ -3,8 +3,10 @@ import { CommonModule } from '@angular/common';
 import { CameraService } from '../../core/services/camera.service';
 import { OrientationService } from '../../core/services/orientation.service';
 import { PanoramaService, CaptureTarget } from '../../core/services/panorama.service';
+import { ProjectionService } from '../../core/services/projection.service';
 import { StitchService } from '../../core/services/stitch.service';
 import { PanoramaViewerComponent } from './panorama-viewer';
+import { getRotationMatrix, Matrix3 } from '../../core/utils/camera-math';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSnackBar } from '@angular/material/snack-bar';
@@ -26,7 +28,7 @@ import { HttpClient } from '@angular/common/http';
       <div class="capture-header">
         <span class="title-row">
           <mat-icon class="logo-icon">camera_360</mat-icon>
-          <span>360° Land Boundary Capture</span>
+          <span>360° Guided Land Capture</span>
         </span>
         <button mat-icon-button class="close-btn" (click)="exitCapture()">
           <mat-icon>close</mat-icon>
@@ -283,6 +285,7 @@ export class PanoramaCaptureComponent implements OnInit, OnDestroy {
   private readonly cameraService = inject(CameraService);
   private readonly orientationService = inject(OrientationService);
   private readonly panoramaService = inject(PanoramaService);
+  private readonly projectionService = inject(ProjectionService);
   private readonly stitchService = inject(StitchService);
   private readonly snackBar = inject(MatSnackBar);
   private readonly http = inject(HttpClient);
@@ -321,10 +324,23 @@ export class PanoramaCaptureComponent implements OnInit, OnDestroy {
   private startingYaw: number | null = null;
 
   // Render loop properties (low-pass filter)
-  private rawYaw = 0;
-  private rawPitch = 0;
-  private smoothedYaw = 0;
-  private smoothedPitch = 0;
+  private rawAlpha = 0;
+  private rawBeta = 0;
+  private rawGamma = 0;
+
+  private smoothedAlpha = 0;
+  private smoothedBeta = 0;
+  private smoothedGamma = 0;
+
+  private prevYaw = 0;
+  private prevPitch = 0;
+
+  private currentRotationMatrix: Matrix3 = [
+    [1, 0, 0],
+    [0, 1, 0],
+    [0, 0, 1]
+  ];
+
   private animationFrameId: number | null = null;
 
   // Circular progress calculations
@@ -351,7 +367,7 @@ export class PanoramaCaptureComponent implements OnInit, OnDestroy {
 
   getEstimatedTimeRemaining(): string {
     const remaining = this.targets().length - this.completedCount();
-    const secPerImage = 3; // 3 seconds average per image alignment
+    const secPerImage = 3; 
     const totalSec = remaining * secPerImage;
     if (totalSec <= 0) return '0s';
     const mins = Math.floor(totalSec / 60);
@@ -440,15 +456,18 @@ export class PanoramaCaptureComponent implements OnInit, OnDestroy {
 
     const rawAlpha = Math.round(event.alpha || 0);
     const rawBeta = Math.round(event.beta || 0);
+    const rawGamma = Math.round(event.gamma || 0);
 
     if (this.startingYaw === null) {
       this.startingYaw = rawAlpha;
-      this.smoothedYaw = 0;
-      this.smoothedPitch = rawBeta;
+      this.smoothedAlpha = 0;
+      this.smoothedBeta = rawBeta;
+      this.smoothedGamma = rawGamma;
     }
 
-    this.rawYaw = (rawAlpha - this.startingYaw + 360) % 360;
-    this.rawPitch = rawBeta;
+    this.rawAlpha = (rawAlpha - this.startingYaw + 360) % 360;
+    this.rawBeta = rawBeta;
+    this.rawGamma = rawGamma;
   };
 
   private startRenderLoop(): void {
@@ -461,38 +480,69 @@ export class PanoramaCaptureComponent implements OnInit, OnDestroy {
   private renderLoop = () => {
     if (this.step() !== 'capturing') return;
 
-    // 1. Low-Pass Exponential Smoothing Filter (lerp Factor = 0.15)
+    // 1. Exponential low-pass filter (lerp factor = 0.15) for smooth orientation
     const lerpFactor = 0.15;
     
-    // Circular yaw check
-    let diffYaw = this.rawYaw - this.smoothedYaw;
+    // Circular alpha
+    let diffAlpha = this.rawAlpha - this.smoothedAlpha;
+    if (diffAlpha > 180) diffAlpha -= 360;
+    if (diffAlpha < -180) diffAlpha += 360;
+    this.smoothedAlpha += diffAlpha * lerpFactor;
+    this.smoothedAlpha = (this.smoothedAlpha + 360) % 360;
+
+    // Beta
+    this.smoothedBeta += (this.rawBeta - this.smoothedBeta) * lerpFactor;
+
+    // Circular gamma
+    let diffGamma = this.rawGamma - this.smoothedGamma;
+    if (diffGamma > 180) diffGamma -= 360;
+    if (diffGamma < -180) diffGamma += 360;
+    this.smoothedGamma += diffGamma * lerpFactor;
+    this.smoothedGamma = (this.smoothedGamma + 360) % 360;
+
+    // 2. Generate 3D camera rotation matrix
+    const matrix = getRotationMatrix(this.smoothedAlpha, this.smoothedBeta, this.smoothedGamma);
+    this.currentRotationMatrix = matrix;
+
+    // 3. Extract camera yaw & pitch from 3D camera forward vector
+    const fx = -matrix[0][2];
+    const fy = -matrix[1][2];
+    const fz = -matrix[2][2];
+    
+    let yaw = Math.atan2(fx, -fz) * 180 / Math.PI;
+    if (yaw < 0) yaw += 360;
+    const pitch = Math.asin(fy) * 180 / Math.PI;
+
+    this.currentYaw.set(Math.round(yaw));
+    this.currentPitch.set(Math.round(pitch));
+
+    // 4. Validate speed by orientation delta
+    let diffYaw = yaw - this.prevYaw;
     if (diffYaw > 180) diffYaw -= 360;
     if (diffYaw < -180) diffYaw += 360;
-    
-    this.smoothedYaw += diffYaw * lerpFactor;
-    this.smoothedYaw = (this.smoothedYaw + 360) % 360;
-    
-    // Pitch check
-    const diffPitch = this.rawPitch - this.smoothedPitch;
-    this.smoothedPitch += diffPitch * lerpFactor;
+    const diffPitch = pitch - this.prevPitch;
 
-    this.currentYaw.set(Math.round(this.smoothedYaw));
-    this.currentPitch.set(Math.round(this.smoothedPitch));
-
-    // 2. Validate motion speed (angular velocity threshold = 3.5 deg per frame)
     const angularVelocity = Math.abs(diffYaw) + Math.abs(diffPitch);
     const tooFast = angularVelocity > 3.5;
     this.isPhoneMovingTooFast.set(tooFast);
 
-    // 3. Process alignment guidance and auto-capture
+    this.prevYaw = yaw;
+    this.prevPitch = pitch;
+
+    // 5. Update alignment and guidance cues
     const active = this.activeTarget();
     if (active) {
-      const guide = this.panoramaService.getInstructions(this.smoothedYaw, this.smoothedPitch);
+      const guide = this.panoramaService.getInstructions(yaw, pitch);
+      
+      // Calculate angular error using 3D dot product logic in ProjectionService
+      const angularError = this.projectionService.getAngularError(active.yaw, active.pitch, matrix);
+      const isAligned = angularError <= 3.0; // aligned within 3 degrees in true 3D space
+
       this.guidanceText.set(tooFast ? 'Hold Phone Still!' : guide.text);
-      this.isAligned.set(!tooFast && guide.aligned);
+      this.isAligned.set(!tooFast && isAligned);
       this.guidanceDirection.set(tooFast ? 'steady' : guide.direction);
 
-      if (!tooFast && guide.aligned) {
+      if (!tooFast && isAligned) {
         if (!this.alignLocked) {
           this.alignLocked = true;
           this.autoCaptureTimeout = setTimeout(() => {
@@ -533,12 +583,11 @@ export class PanoramaCaptureComponent implements OnInit, OnDestroy {
   };
 
   rotateSimulated(dYaw: number, dPitch: number): void {
-    this.rawYaw = (this.rawYaw + dYaw + 360) % 360;
-    this.rawPitch = Math.max(-90, Math.min(90, this.rawPitch + dPitch));
+    this.rawAlpha = (this.rawAlpha + dYaw + 360) % 360;
+    this.rawBeta = Math.max(-90, Math.min(90, this.rawBeta + dPitch));
   }
 
   private executeFrameCapture(): void {
-    // Prevent capture if phone is moving too fast or not aligned
     if (this.isPhoneMovingTooFast() || (!this.isAligned() && this.alignLocked)) {
       this.alignLocked = false;
       return;
@@ -694,10 +743,12 @@ export class PanoramaCaptureComponent implements OnInit, OnDestroy {
     this.alignLocked = false;
     this.startingYaw = null;
     this.guidanceDirection.set('none');
-    this.rawYaw = 0;
-    this.rawPitch = 0;
-    this.smoothedYaw = 0;
-    this.smoothedPitch = 0;
+    this.rawAlpha = 0;
+    this.rawBeta = 0;
+    this.rawGamma = 0;
+    this.smoothedAlpha = 0;
+    this.smoothedBeta = 0;
+    this.smoothedGamma = 0;
     setTimeout(() => {
       if (this.isSimulated()) {
         this.startSimulationMode();
@@ -714,38 +765,21 @@ export class PanoramaCaptureComponent implements OnInit, OnDestroy {
   }
 
   getDotStyle(target: CaptureTarget) {
-    // Project based on smoothed values for 60 FPS animation glide
-    const yaw = this.smoothedYaw;
-    const pitch = this.smoothedPitch;
     const active = this.activeTarget();
     const isActive = active?.id === target.id;
-
-    let dYaw = target.yaw - yaw;
-    if (dYaw > 180) dYaw -= 360;
-    if (dYaw < -180) dYaw += 360;
-
-    const dPitch = target.pitch - pitch;
-
-    const fovX = 60;
-    const fovY = 40;
-
-    let x = 50 + (dYaw / (fovX / 2)) * 50;
-    let y = 50 - (dPitch / (fovY / 2)) * 50;
-
-    // Hide target if it is strictly behind the camera view (>90 deg offset)
-    let isVisible = Math.abs(dYaw) <= 90 && x >= 0 && x <= 100 && y >= 0 && y <= 100;
-
-    if (isActive && !isVisible) {
-      // Clamp active target dot to viewport boundaries so it acts as a rotation compass pointer
-      x = Math.max(5, Math.min(95, x));
-      y = Math.max(5, Math.min(95, y));
-      isVisible = true;
-    }
+    
+    // Delegate projection to the dedicated math-based ProjectionService
+    const pt = this.projectionService.projectTarget(
+      target.yaw,
+      target.pitch,
+      this.currentRotationMatrix,
+      isActive
+    );
 
     return {
-      left: `${x}%`,
-      top: `${y}%`,
-      display: isVisible ? 'block' : 'none'
+      left: `${pt.x}%`,
+      top: `${pt.y}%`,
+      display: pt.isVisible ? 'block' : 'none'
     };
   }
 
@@ -753,41 +787,33 @@ export class PanoramaCaptureComponent implements OnInit, OnDestroy {
     const active = this.activeTarget();
     if (active?.id !== target.id) return false;
 
-    const yaw = this.smoothedYaw;
-    const pitch = this.smoothedPitch;
+    const pt = this.projectionService.projectTarget(
+      target.yaw,
+      target.pitch,
+      this.currentRotationMatrix,
+      true
+    );
 
-    let dYaw = target.yaw - yaw;
-    if (dYaw > 180) dYaw -= 360;
-    if (dYaw < -180) dYaw += 360;
-
-    const dPitch = target.pitch - pitch;
-
-    const fovX = 60;
-    const fovY = 40;
-
-    const x = 50 + (dYaw / (fovX / 2)) * 50;
-    const y = 50 - (dPitch / (fovY / 2)) * 50;
-
-    return Math.abs(dYaw) > 90 || x < 0 || x > 100 || y < 0 || y > 100;
+    return pt.isClamped;
   }
 
   getRadarTrackTransform(): string {
-    const yaw = this.smoothedYaw;
+    const yaw = this.currentYaw();
     const offset = 180 - yaw;
     return `translateX(${offset}px)`;
   }
 
   getSimulatedSkyTransform(): string {
-    const yaw = this.smoothedYaw;
-    const pitch = this.smoothedPitch;
+    const yaw = this.currentYaw();
+    const pitch = this.currentPitch();
     const xOffset = yaw * -4;
     const yOffset = pitch * 3;
     return `translate(${xOffset}px, ${yOffset}px)`;
   }
 
   getSimulatedGroundTransform(): string {
-    const yaw = this.smoothedYaw;
-    const pitch = this.smoothedPitch;
+    const yaw = this.currentYaw();
+    const pitch = this.currentPitch();
     const xOffset = yaw * -4;
     const yOffset = pitch * 3;
     return `translate(${xOffset}px, ${yOffset}px)`;
