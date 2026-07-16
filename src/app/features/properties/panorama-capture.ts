@@ -123,6 +123,18 @@ import { HttpClient } from '@angular/common/http';
 
         <!-- 3D Target Dots Projected on Screen - Render ONLY the single active target dot -->
         <div class="target-dots-container">
+          <!-- Static diagnostic box for checking layer height & visibility -->
+          <div style="position: absolute; left: 50%; top: 50%; width: 80px; height: 80px; background: red; z-index: 999999; transform: translate(-50%, -50%); border: 3px solid white; display: flex; align-items: center; justify-content: center;">
+            <span style="color: white; font-size: 11px; font-weight: bold; text-align: center;">STATIC RED</span>
+          </div>
+
+          <!-- Dynamic diagnostic box to check signal projection calculations -->
+          <div *ngIf="activeTarget() as target"
+               [ngStyle]="activeTargetStyle()"
+               style="position: absolute; width: 60px; height: 60px; background: blue; z-index: 999999; transform: translate(-50%, -50%); border: 2px solid white; display: flex; align-items: center; justify-content: center;">
+            <span style="color: white; font-size: 10px; font-weight: bold; text-align: center;">DYN BLUE</span>
+          </div>
+
           <div class="target-dot active"
                *ngIf="activeTarget() as target"
                [ngClass]="{
