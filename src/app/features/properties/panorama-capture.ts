@@ -121,36 +121,12 @@ import { HttpClient } from '@angular/common/http';
           <span class="material-symbols-outlined scale-up-check">check_circle</span>
         </div>
 
-        <!-- 3D Target Dots Projected on Screen - Render ONLY the single active target dot -->
+        <!-- 3D Target Dots Projected on Screen - Persistent DOM node animated imperatively at 60 FPS -->
         <div class="target-dots-container">
-          <!-- Static diagnostic box for checking layer height & visibility -->
-          <div style="position: absolute; left: 50%; top: 50%; width: 80px; height: 80px; background: red; z-index: 999999; transform: translate(-50%, -50%); border: 3px solid white; display: flex; align-items: center; justify-content: center;">
-            <span style="color: white; font-size: 11px; font-weight: bold; text-align: center;">STATIC RED</span>
-          </div>
-
-          <!-- Dynamic diagnostic box to check signal projection calculations -->
-          <div *ngIf="activeTarget() as target"
-               [ngStyle]="activeTargetStyle()"
-               style="position: absolute; width: 60px; height: 60px; background: blue; z-index: 999999; transform: translate(-50%, -50%); border: 2px solid white; display: flex; align-items: center; justify-content: center;">
-            <span style="color: white; font-size: 10px; font-weight: bold; text-align: center;">DYN BLUE</span>
-          </div>
-
-          <div class="target-dot active"
-               *ngIf="activeTarget() as target"
-               [ngClass]="{
-                 'aligned': isAligned(),
-                 'clamped': activeTargetClamped()
-               }"
-               [ngStyle]="activeTargetStyle()">
+          <div #targetDot class="target-dot active" style="visibility: hidden;">
             <span class="dot-inner"></span>
             <span class="dot-label">
-              <span *ngIf="isAligned()" class="material-symbols-outlined green-check">check</span>
-              <ng-container *ngIf="!isAligned()">
-                <span *ngIf="guidanceDirection() === 'right'" class="material-symbols-outlined">arrow_forward</span>
-                <span *ngIf="guidanceDirection() === 'left'" class="material-symbols-outlined">arrow_back</span>
-                <span *ngIf="guidanceDirection() === 'up'" class="material-symbols-outlined">arrow_upward</span>
-                <span *ngIf="guidanceDirection() === 'down'" class="material-symbols-outlined">arrow_downward</span>
-              </ng-container>
+              <span #guidanceIcon class="material-symbols-outlined"></span>
             </span>
           </div>
         </div>
@@ -301,6 +277,10 @@ export class PanoramaCaptureComponent implements OnInit, OnDestroy {
   private readonly http = inject(HttpClient);
 
   private readonly videoElement = viewChild<ElementRef>('videoElement');
+  
+  // Direct DOM references for 60 FPS imperative animations
+  private readonly targetDot = viewChild<ElementRef>('targetDot');
+  private readonly guidanceIcon = viewChild<ElementRef>('guidanceIcon');
 
   // View state signals
   readonly step = signal<'permission' | 'capturing' | 'stitching' | 'preview'>('permission');
@@ -315,42 +295,6 @@ export class PanoramaCaptureComponent implements OnInit, OnDestroy {
   
   // Computed signals for automated UI states
   readonly completedCount = computed(() => this.targets().filter(t => t.completed).length);
-
-  // Signal representing current 3D rotation matrix to drive projections reactively
-  readonly currentRotationMatrixSignal = signal<Matrix3>([
-    [1, 0, 0],
-    [0, 1, 0],
-    [0, 0, 1]
-  ]);
-
-  // Computed signal mapping the active target to screen coordinates
-  readonly activeTargetProjected = computed(() => {
-    const target = this.activeTarget();
-    if (!target) return null;
-    return this.projectionService.projectTarget(
-      target.yaw,
-      target.pitch,
-      this.currentRotationMatrixSignal(),
-      true
-    );
-  });
-
-  readonly activeTargetStyle = computed(() => {
-    const pt = this.activeTargetProjected();
-    if (!pt) return { display: 'none' };
-    const style = {
-      left: `${pt.x}%`,
-      top: `${pt.y}%`,
-      opacity: pt.isVisible ? '1' : '0.5',
-      visibility: 'visible' as const
-    };
-    console.log('[DEBUG_STYLE] Computed style:', style);
-    return style;
-  });
-
-  readonly activeTargetClamped = computed(() => {
-    return this.activeTargetProjected()?.isClamped || false;
-  });
 
   readonly currentYaw = signal<number>(0);
   readonly currentPitch = signal<number>(0);
@@ -544,7 +488,6 @@ export class PanoramaCaptureComponent implements OnInit, OnDestroy {
     // 4. Compensate for Device Screen Orientation Angle (handling landscape views)
     const screenAngle = window.screen?.orientation?.angle || (window as any).orientation || 0;
     matrix = compensateScreenOrientation(matrix, screenAngle);
-    this.currentRotationMatrixSignal.set(matrix);
 
     // 5. Extract camera yaw & pitch from 3D camera forward vector
     const fx = -matrix[0][2];
@@ -574,9 +517,12 @@ export class PanoramaCaptureComponent implements OnInit, OnDestroy {
 
     // 7. Process active alignment target instructions
     const active = this.activeTarget();
-    let ptDebug = null;
+    let pt = null;
     let angularError = 0;
     let isAligned = false;
+
+    const dotEl = this.targetDot()?.nativeElement;
+    const iconEl = this.guidanceIcon()?.nativeElement;
 
     if (active) {
       const guide = this.panoramaService.getInstructions(yaw, pitch);
@@ -587,7 +533,41 @@ export class PanoramaCaptureComponent implements OnInit, OnDestroy {
       this.isAligned.set(!tooFast && isAligned);
       this.guidanceDirection.set(tooFast ? 'steady' : guide.direction);
 
-      ptDebug = this.projectionService.projectTarget(active.yaw, active.pitch, matrix, true);
+      pt = this.projectionService.projectTarget(active.yaw, active.pitch, matrix, true);
+
+      // Imperative DOM manipulations for smooth 60 FPS screen coordinate transitions
+      if (dotEl) {
+        dotEl.style.visibility = 'visible';
+        dotEl.style.left = `${pt.x}%`;
+        dotEl.style.top = `${pt.y}%`;
+        dotEl.style.opacity = pt.isVisible ? '1' : '0.5';
+
+        // Toggle alignment/clamp styling classes
+        if (isAligned && !tooFast) {
+          dotEl.classList.add('aligned');
+          dotEl.classList.remove('clamped');
+          if (iconEl) {
+            iconEl.innerText = 'check';
+            iconEl.className = 'material-symbols-outlined green-check';
+          }
+        } else {
+          dotEl.classList.remove('aligned');
+          if (pt.isClamped) {
+            dotEl.classList.add('clamped');
+          } else {
+            dotEl.classList.remove('clamped');
+          }
+          if (iconEl) {
+            iconEl.className = 'material-symbols-outlined';
+            const dir = tooFast ? 'steady' : guide.direction;
+            if (dir === 'right') iconEl.innerText = 'arrow_forward';
+            else if (dir === 'left') iconEl.innerText = 'arrow_back';
+            else if (dir === 'up') iconEl.innerText = 'arrow_upward';
+            else if (dir === 'down') iconEl.innerText = 'arrow_downward';
+            else iconEl.innerText = '';
+          }
+        }
+      }
 
       if (!tooFast && isAligned) {
         if (!this.alignLocked) {
@@ -606,16 +586,19 @@ export class PanoramaCaptureComponent implements OnInit, OnDestroy {
     } else {
       this.isAligned.set(false);
       this.guidanceDirection.set('none');
+      if (dotEl) {
+        dotEl.style.visibility = 'hidden';
+      }
     }
 
-    // 8. Debug logger printing all coordinates, vectors, errors and status values every frame
+    // Debug logging values every frame
     console.log('[DEBUG_FRAME]', {
       orientation: { alpha: this.rawAlpha, beta: this.rawBeta, gamma: this.rawGamma },
       quaternion: this.currentQuaternion,
       cameraForward: cameraForward,
       rotationMatrix: matrix,
       activeTarget: active ? { id: active.id, yaw: active.yaw, pitch: active.pitch } : null,
-      projection: ptDebug,
+      projection: pt,
       angularError: angularError,
       isAligned: isAligned && !tooFast
     });
