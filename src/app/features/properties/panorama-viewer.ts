@@ -1,11 +1,13 @@
-import { Component, Input, OnInit, OnDestroy, OnChanges, SimpleChanges, ElementRef, viewChild } from '@angular/core';
+import { Component, Input, OnInit, OnDestroy, OnChanges, SimpleChanges, ElementRef, viewChild, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { MatButtonModule } from '@angular/material/button';
+import { MatIconModule } from '@angular/material/icon';
 import { Viewer } from '@photo-sphere-viewer/core';
 
 @Component({
   selector: 'app-panorama-viewer',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, MatButtonModule, MatIconModule],
   template: `
     <div class="pano-viewer-container">
       <div *ngIf="!panoramaUrl" class="empty-state">
@@ -13,6 +15,12 @@ import { Viewer } from '@photo-sphere-viewer/core';
         <p>No panorama image loaded.</p>
       </div>
       <div [hidden]="!panoramaUrl" #panoContainer class="pano-container"></div>
+      
+      <!-- Gyroscope toggle overlay button -->
+      <button *ngIf="panoramaUrl" mat-icon-button class="gyro-toggle-btn" 
+              [class.active]="gyroEnabled()" (click)="toggleGyro()" title="Toggle Gyroscope Mode">
+        <mat-icon>{{ gyroEnabled() ? 'screen_rotation' : 'screen_lock_rotation' }}</mat-icon>
+      </button>
     </div>
   `,
   styles: [`
@@ -40,6 +48,26 @@ import { Viewer } from '@photo-sphere-viewer/core';
       span { font-size: 3rem; }
       p { margin: 0; font-size: 0.9rem; }
     }
+    .gyro-toggle-btn {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      z-index: 100;
+      background: rgba(15, 23, 42, 0.75);
+      color: #f8fafc !important;
+      border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      
+      &.active {
+        background: var(--accent-primary) !important;
+        border-color: var(--accent-primary) !important;
+        color: #fff !important;
+        box-shadow: 0 0 10px var(--accent-primary);
+      }
+    }
   `]
 })
 export class PanoramaViewerComponent implements OnInit, OnDestroy, OnChanges {
@@ -47,6 +75,7 @@ export class PanoramaViewerComponent implements OnInit, OnDestroy, OnChanges {
 
   private readonly panoContainer = viewChild<ElementRef>('panoContainer');
   private viewer: Viewer | null = null;
+  readonly gyroEnabled = signal<boolean>(false);
 
   ngOnInit(): void {}
 
@@ -58,6 +87,7 @@ export class PanoramaViewerComponent implements OnInit, OnDestroy, OnChanges {
 
   ngOnDestroy(): void {
     this.destroyViewer();
+    this.disableGyro();
   }
 
   private destroyViewer(): void {
@@ -91,4 +121,34 @@ export class PanoramaViewerComponent implements OnInit, OnDestroy, OnChanges {
       console.error('Failed to initialize Photo Sphere Viewer:', err);
     }
   }
+
+  toggleGyro(): void {
+    if (this.gyroEnabled()) {
+      this.disableGyro();
+    } else {
+      this.enableGyro();
+    }
+  }
+
+  private enableGyro(): void {
+    this.gyroEnabled.set(true);
+    window.addEventListener('deviceorientation', this.onGyroUpdate);
+  }
+
+  private disableGyro(): void {
+    this.gyroEnabled.set(false);
+    window.removeEventListener('deviceorientation', this.onGyroUpdate);
+  }
+
+  private onGyroUpdate = (event: DeviceOrientationEvent) => {
+    if (!this.viewer || !this.gyroEnabled()) return;
+    const alpha = event.alpha || 0;
+    const beta = event.beta || 0;
+    
+    // Map absolute device orientation coordinates to spherical yaw/pitch (in radians)
+    const yawVal = -alpha * (Math.PI / 180);
+    const pitchVal = (beta - 90) * (Math.PI / 180);
+    
+    this.viewer.rotate({ yaw: yawVal, pitch: pitchVal });
+  };
 }

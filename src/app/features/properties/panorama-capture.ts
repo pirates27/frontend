@@ -110,6 +110,12 @@ import { HttpClient } from '@angular/common/http';
         <!-- Dynamic Screen Flash -->
         <div class="screen-flash" [class.flash-active]="triggerFlash()"></div>
 
+        <!-- Phone Moving Too Fast Flashing Warning Banner -->
+        <div class="speed-warning-banner" *ngIf="isPhoneMovingTooFast()">
+          <mat-icon>error_outline</mat-icon>
+          <span>Moving Too Fast! Hold Phone Still</span>
+        </div>
+
         <!-- Large Floating Green Checkmark Success Overlay on capturing -->
         <div class="check-success-overlay" *ngIf="triggerCheckSuccess()">
           <mat-icon class="scale-up-check">check_circle</mat-icon>
@@ -172,10 +178,12 @@ import { HttpClient } from '@angular/common/http';
               <span class="divider">|</span>
               <span>Remaining: <strong>{{ targets().length - completedCount() }}</strong></span>
               <span class="divider">|</span>
+              <span>Est. Time: <strong>{{ getEstimatedTimeRemaining() }}</strong></span>
+              <span class="divider">|</span>
               <span class="percent-highlight">{{ completedPercent() }}%</span>
             </div>
             <div class="hud-instruction-alert" [class.ready]="isAligned()">
-              {{ isAligned() ? 'Perfect! Capture now' : guidanceText() }}
+              {{ isAligned() ? 'Perfect! Capture now' : (isPhoneMovingTooFast() ? 'Hold Phone Still!' : guidanceText()) }}
             </div>
           </div>
         </div>
@@ -296,6 +304,7 @@ export class PanoramaCaptureComponent implements OnInit, OnDestroy {
   readonly triggerFlash = signal<boolean>(false);
   readonly triggerCheckSuccess = signal<boolean>(false);
   readonly guidanceDirection = signal<string>('none');
+  readonly isPhoneMovingTooFast = signal<boolean>(false);
 
   // Guidance texts
   readonly guidanceText = signal<string>('Rotate to active target dot');
@@ -310,6 +319,13 @@ export class PanoramaCaptureComponent implements OnInit, OnDestroy {
   private alignLocked = false;
   private autoCaptureTimeout: any = null;
   private startingYaw: number | null = null;
+
+  // Render loop properties (low-pass filter)
+  private rawYaw = 0;
+  private rawPitch = 0;
+  private smoothedYaw = 0;
+  private smoothedPitch = 0;
+  private animationFrameId: number | null = null;
 
   // Circular progress calculations
   readonly ringCircumference = 2 * Math.PI * 22; // 138.23
@@ -331,6 +347,16 @@ export class PanoramaCaptureComponent implements OnInit, OnDestroy {
     const total = this.targets().length || 38;
     const completed = this.completedCount();
     return Math.round((completed / total) * 100);
+  }
+
+  getEstimatedTimeRemaining(): string {
+    const remaining = this.targets().length - this.completedCount();
+    const secPerImage = 3; // 3 seconds average per image alignment
+    const totalSec = remaining * secPerImage;
+    if (totalSec <= 0) return '0s';
+    const mins = Math.floor(totalSec / 60);
+    const secs = totalSec % 60;
+    return mins > 0 ? `${mins}m ${secs}s` : `${secs}s`;
   }
 
   getTargetName(target: CaptureTarget): string {
@@ -376,7 +402,10 @@ export class PanoramaCaptureComponent implements OnInit, OnDestroy {
       if (stream && sensorOk) {
         this.isSimulated.set(false);
         this.step.set('capturing');
-        setTimeout(() => this.bindVideoAndSensors(), 200);
+        setTimeout(() => {
+          this.bindVideoAndSensors();
+          this.startRenderLoop();
+        }, 200);
       } else {
         this.snackBar.open('Camera or orientation sensor blocked. Launching Simulator.', 'Dismiss', { duration: 3000 });
         this.startSimulationMode();
@@ -394,6 +423,7 @@ export class PanoramaCaptureComponent implements OnInit, OnDestroy {
     this.step.set('capturing');
     setTimeout(() => {
       window.addEventListener('keydown', this.onKeyDownSimulation);
+      this.startRenderLoop();
     }, 200);
   }
 
@@ -408,45 +438,80 @@ export class PanoramaCaptureComponent implements OnInit, OnDestroy {
   private onOrientationUpdate = (event: DeviceOrientationEvent) => {
     if (this.step() !== 'capturing' || this.isSimulated()) return;
 
-    const rawYaw = Math.round(event.alpha || 0);
-    const pitch = Math.round(event.beta || 0);
+    const rawAlpha = Math.round(event.alpha || 0);
+    const rawBeta = Math.round(event.beta || 0);
 
     if (this.startingYaw === null) {
-      this.startingYaw = rawYaw;
+      this.startingYaw = rawAlpha;
+      this.smoothedYaw = 0;
+      this.smoothedPitch = rawBeta;
     }
 
-    const yaw = (rawYaw - this.startingYaw + 360) % 360;
+    this.rawYaw = (rawAlpha - this.startingYaw + 360) % 360;
+    this.rawPitch = rawBeta;
+  };
 
-    this.currentYaw.set(yaw);
-    this.currentPitch.set(pitch);
+  private startRenderLoop(): void {
+    if (this.animationFrameId) {
+      cancelAnimationFrame(this.animationFrameId);
+    }
+    this.animationFrameId = requestAnimationFrame(this.renderLoop);
+  }
 
+  private renderLoop = () => {
+    if (this.step() !== 'capturing') return;
+
+    // 1. Low-Pass Exponential Smoothing Filter (lerp Factor = 0.15)
+    const lerpFactor = 0.15;
+    
+    // Circular yaw check
+    let diffYaw = this.rawYaw - this.smoothedYaw;
+    if (diffYaw > 180) diffYaw -= 360;
+    if (diffYaw < -180) diffYaw += 360;
+    
+    this.smoothedYaw += diffYaw * lerpFactor;
+    this.smoothedYaw = (this.smoothedYaw + 360) % 360;
+    
+    // Pitch check
+    const diffPitch = this.rawPitch - this.smoothedPitch;
+    this.smoothedPitch += diffPitch * lerpFactor;
+
+    this.currentYaw.set(Math.round(this.smoothedYaw));
+    this.currentPitch.set(Math.round(this.smoothedPitch));
+
+    // 2. Validate motion speed (angular velocity threshold = 3.5 deg per frame)
+    const angularVelocity = Math.abs(diffYaw) + Math.abs(diffPitch);
+    const tooFast = angularVelocity > 3.5;
+    this.isPhoneMovingTooFast.set(tooFast);
+
+    // 3. Process alignment guidance and auto-capture
     const active = this.activeTarget();
-    if (!active) {
-      this.isAligned.set(false);
-      this.guidanceDirection.set('none');
-      this.guidanceText.set('Generating virtual tour...');
-      return;
-    }
+    if (active) {
+      const guide = this.panoramaService.getInstructions(this.smoothedYaw, this.smoothedPitch);
+      this.guidanceText.set(tooFast ? 'Hold Phone Still!' : guide.text);
+      this.isAligned.set(!tooFast && guide.aligned);
+      this.guidanceDirection.set(tooFast ? 'steady' : guide.direction);
 
-    const guide = this.panoramaService.getInstructions(yaw, pitch);
-    this.guidanceText.set(guide.text);
-    this.isAligned.set(guide.aligned);
-    this.guidanceDirection.set(guide.direction);
-
-    if (guide.aligned) {
-      if (!this.alignLocked) {
-        this.alignLocked = true;
-        this.autoCaptureTimeout = setTimeout(() => {
-          this.executeFrameCapture();
-        }, 400);
+      if (!tooFast && guide.aligned) {
+        if (!this.alignLocked) {
+          this.alignLocked = true;
+          this.autoCaptureTimeout = setTimeout(() => {
+            this.executeFrameCapture();
+          }, 400);
+        }
+      } else {
+        this.alignLocked = false;
+        if (this.autoCaptureTimeout) {
+          clearTimeout(this.autoCaptureTimeout);
+          this.autoCaptureTimeout = null;
+        }
       }
     } else {
-      this.alignLocked = false;
-      if (this.autoCaptureTimeout) {
-        clearTimeout(this.autoCaptureTimeout);
-        this.autoCaptureTimeout = null;
-      }
+      this.isAligned.set(false);
+      this.guidanceDirection.set('none');
     }
+
+    this.animationFrameId = requestAnimationFrame(this.renderLoop);
   };
 
   private onKeyDownSimulation = (event: KeyboardEvent) => {
@@ -468,37 +533,17 @@ export class PanoramaCaptureComponent implements OnInit, OnDestroy {
   };
 
   rotateSimulated(dYaw: number, dPitch: number): void {
-    let yaw = (this.currentYaw() + dYaw + 360) % 360;
-    let pitch = Math.max(-90, Math.min(90, this.currentPitch() + dPitch));
-
-    this.currentYaw.set(yaw);
-    this.currentPitch.set(pitch);
-
-    const active = this.activeTarget();
-    if (!active) return;
-
-    const guide = this.panoramaService.getInstructions(yaw, pitch);
-    this.guidanceText.set(guide.text);
-    this.isAligned.set(guide.aligned);
-    this.guidanceDirection.set(guide.direction);
-
-    if (guide.aligned) {
-      if (!this.alignLocked) {
-        this.alignLocked = true;
-        this.autoCaptureTimeout = setTimeout(() => {
-          this.executeFrameCapture();
-        }, 400);
-      }
-    } else {
-      this.alignLocked = false;
-      if (this.autoCaptureTimeout) {
-        clearTimeout(this.autoCaptureTimeout);
-        this.autoCaptureTimeout = null;
-      }
-    }
+    this.rawYaw = (this.rawYaw + dYaw + 360) % 360;
+    this.rawPitch = Math.max(-90, Math.min(90, this.rawPitch + dPitch));
   }
 
   private executeFrameCapture(): void {
+    // Prevent capture if phone is moving too fast or not aligned
+    if (this.isPhoneMovingTooFast() || (!this.isAligned() && this.alignLocked)) {
+      this.alignLocked = false;
+      return;
+    }
+
     try {
       this.triggerFlash.set(true);
       setTimeout(() => this.triggerFlash.set(false), 120);
@@ -529,17 +574,6 @@ export class PanoramaCaptureComponent implements OnInit, OnDestroy {
         this.startStitching();
       } else {
         this.alignLocked = false;
-        
-        // Immediately update guidance directions
-        const active = this.activeTarget();
-        if (active) {
-          const guide = this.panoramaService.getInstructions(this.currentYaw(), this.currentPitch());
-          this.guidanceText.set(guide.text);
-          this.isAligned.set(guide.aligned);
-          this.guidanceDirection.set(guide.direction);
-        } else {
-          this.guidanceDirection.set('none');
-        }
       }
     } catch (err) {
       console.error('Frame capture failed:', err);
@@ -660,11 +694,16 @@ export class PanoramaCaptureComponent implements OnInit, OnDestroy {
     this.alignLocked = false;
     this.startingYaw = null;
     this.guidanceDirection.set('none');
+    this.rawYaw = 0;
+    this.rawPitch = 0;
+    this.smoothedYaw = 0;
+    this.smoothedPitch = 0;
     setTimeout(() => {
       if (this.isSimulated()) {
         this.startSimulationMode();
       } else {
         this.bindVideoAndSensors();
+        this.startRenderLoop();
       }
     }, 200);
   }
@@ -675,8 +714,9 @@ export class PanoramaCaptureComponent implements OnInit, OnDestroy {
   }
 
   getDotStyle(target: CaptureTarget) {
-    const yaw = this.currentYaw();
-    const pitch = this.currentPitch();
+    // Project based on smoothed values for 60 FPS animation glide
+    const yaw = this.smoothedYaw;
+    const pitch = this.smoothedPitch;
     const active = this.activeTarget();
     const isActive = active?.id === target.id;
 
@@ -692,9 +732,11 @@ export class PanoramaCaptureComponent implements OnInit, OnDestroy {
     let x = 50 + (dYaw / (fovX / 2)) * 50;
     let y = 50 - (dPitch / (fovY / 2)) * 50;
 
-    let isVisible = x >= 0 && x <= 100 && y >= 0 && y <= 100;
+    // Hide target if it is strictly behind the camera view (>90 deg offset)
+    let isVisible = Math.abs(dYaw) <= 90 && x >= 0 && x <= 100 && y >= 0 && y <= 100;
 
     if (isActive && !isVisible) {
+      // Clamp active target dot to viewport boundaries so it acts as a rotation compass pointer
       x = Math.max(5, Math.min(95, x));
       y = Math.max(5, Math.min(95, y));
       isVisible = true;
@@ -711,8 +753,8 @@ export class PanoramaCaptureComponent implements OnInit, OnDestroy {
     const active = this.activeTarget();
     if (active?.id !== target.id) return false;
 
-    const yaw = this.currentYaw();
-    const pitch = this.currentPitch();
+    const yaw = this.smoothedYaw;
+    const pitch = this.smoothedPitch;
 
     let dYaw = target.yaw - yaw;
     if (dYaw > 180) dYaw -= 360;
@@ -726,32 +768,36 @@ export class PanoramaCaptureComponent implements OnInit, OnDestroy {
     const x = 50 + (dYaw / (fovX / 2)) * 50;
     const y = 50 - (dPitch / (fovY / 2)) * 50;
 
-    return x < 0 || x > 100 || y < 0 || y > 100;
+    return Math.abs(dYaw) > 90 || x < 0 || x > 100 || y < 0 || y > 100;
   }
 
   getRadarTrackTransform(): string {
-    const yaw = this.currentYaw();
+    const yaw = this.smoothedYaw;
     const offset = 180 - yaw;
     return `translateX(${offset}px)`;
   }
 
   getSimulatedSkyTransform(): string {
-    const yaw = this.currentYaw();
-    const pitch = this.currentPitch();
+    const yaw = this.smoothedYaw;
+    const pitch = this.smoothedPitch;
     const xOffset = yaw * -4;
     const yOffset = pitch * 3;
     return `translate(${xOffset}px, ${yOffset}px)`;
   }
 
   getSimulatedGroundTransform(): string {
-    const yaw = this.currentYaw();
-    const pitch = this.currentPitch();
+    const yaw = this.smoothedYaw;
+    const pitch = this.smoothedPitch;
     const xOffset = yaw * -4;
     const yOffset = pitch * 3;
     return `translate(${xOffset}px, ${yOffset}px)`;
   }
 
   private cleanupSensorsAndVideo(): void {
+    if (this.animationFrameId) {
+      cancelAnimationFrame(this.animationFrameId);
+      this.animationFrameId = null;
+    }
     window.removeEventListener('deviceorientation', this.onOrientationUpdate);
     window.removeEventListener('keydown', this.onKeyDownSimulation);
     if (this.autoCaptureTimeout) {
