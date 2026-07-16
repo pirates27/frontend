@@ -62,7 +62,9 @@ export class AuthService {
         this.isAuthenticated.set(true);
       }),
       catchError((err) => {
-        this.logout();
+        if (err.status === 401 || err.status === 403) {
+          this.logout();
+        }
         return throwError(() => err);
       })
     );
