@@ -1,6 +1,7 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule, FormsModule } from '@angular/forms';
+import { forkJoin } from 'rxjs';
 import { PropertyService } from '../../core/services/property.service';
 import { AuthService } from '../../core/services/auth.service';
 import { MapComponent } from '../../shared/components/map/map.component';
@@ -190,7 +191,10 @@ import * as Models from '../../core/models/property.models';
                 <div class="space-y-3">
                   <div class="flex justify-between items-start">
                     <h3 class="font-bold text-slate-800 text-sm truncate max-w-[200px]">{{ p.title }}</h3>
-                    <span class="px-2 py-0.5 text-[9px] font-bold uppercase bg-amber-100 text-amber-800 rounded-full">PENDING AUDIT</span>
+                    <span class="px-2 py-0.5 text-[9px] font-bold uppercase rounded-full"
+                          [ngClass]="p.status === 'PENDING_AI' ? 'bg-sky-100 text-sky-800' : 'bg-amber-100 text-amber-800'">
+                      {{ p.status === 'PENDING_AI' ? 'PENDING AI CHECK' : 'PENDING AUDIT' }}
+                    </span>
                   </div>
                   <p class="text-xs text-slate-500">{{ p.village }}, {{ p.district }}</p>
                   <div class="flex gap-4 text-[10px] text-slate-600 bg-slate-50 p-2 rounded-lg font-medium">
@@ -1007,7 +1011,7 @@ print("Payload:", response.json())</pre>
               </div>
 
               <!-- Approval Action Form when on Queue or Pending Property -->
-              <div *ngIf="activeTab === 'queue' || p.status === 'PENDING_GOVT'" class="bg-slate-50 p-5 rounded-xl border border-slate-200 space-y-4">
+              <div *ngIf="activeTab === 'queue' || p.status === 'PENDING_GOVT' || p.status === 'PENDING_AI'" class="bg-slate-50 p-5 rounded-xl border border-slate-200 space-y-4">
                 <h4 class="text-xs font-bold text-slate-700">Inspector Verification Decision:</h4>
                 
                 <form [formGroup]="verifyForm" (ngSubmit)="onVerifyProperty(p.id)" class="space-y-4">
@@ -1167,10 +1171,13 @@ export class GovtDashboardComponent implements OnInit {
   }
 
   loadData(): void {
-    // Fetch properties PENDING Govt officer review directly via status filter
-    this.propertyService.getProperties({ status: 'PENDING_GOVT' }).subscribe({
-      next: (properties) => {
-        this.pendingProperties = properties;
+    // Fetch properties PENDING Govt review AND properties PENDING AI check
+    forkJoin({
+      govt: this.propertyService.getProperties({ status: 'PENDING_GOVT' }),
+      ai: this.propertyService.getProperties({ status: 'PENDING_AI' })
+    }).subscribe({
+      next: (res) => {
+        this.pendingProperties = [...res.govt, ...res.ai];
       },
       error: (err) => {
         console.error('Failed to load pending properties:', err);
