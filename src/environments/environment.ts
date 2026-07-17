@@ -6,7 +6,7 @@ export const environment = {
     style: 'mapbox://styles/mapbox/satellite-streets-v12'
   },
   cloudinary: {
-    cloudName: 'landlens-placeholder',
-    uploadPreset: 'landlens_unsigned_preset'
+    cloudName: 'landlens',
+    uploadPreset: 'landlens_preset'
   }
 };
