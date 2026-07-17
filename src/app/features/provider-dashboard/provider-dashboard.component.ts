@@ -209,7 +209,8 @@ import canvasConfetti from 'canvas-confetti';
                   <ng-container *ngIf="p.threeSixtyImageUrl">
                     <iframe 
                       [src]="sanitize(p.threeSixtyImageUrl)"
-                      class="absolute inset-0 w-full h-full border-0 pointer-events-none scale-[1.08]"
+                      class="absolute top-0 left-0 h-full border-0 pointer-events-none scale-[1.08]"
+                      style="width: calc(100% + 50px); max-width: none;"
                       allowfullscreen
                       loading="lazy">
                     </iframe>
