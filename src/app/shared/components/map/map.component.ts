@@ -86,7 +86,7 @@ export class MapComponent implements AfterViewInit, OnChanges, OnDestroy {
   @Input() properties: Property[] = [];
   @Input() mode: 'view' | 'picker' | 'detail' = 'view';
   @Input() center: [number, number] = [80.4365, 16.3067]; // default Guntur/AP
-  @Input() zoom = 14.5;
+  @Input() zoom = 18.5;
   @Input() pickerLat = 16.3067;
   @Input() pickerLng = 80.4365;
   @Input() initialBoundary: [number, number][] = [];
@@ -149,7 +149,7 @@ export class MapComponent implements AfterViewInit, OnChanges, OnDestroy {
     if (this.boundaryPoints.length > 0) {
       const center = this.calculateCentroid(this.boundaryPoints);
       this.map.setCenter(center);
-      this.map.setZoom(14.5);
+      this.map.setZoom(18.5);
       
       if (this.pickerMarker) {
         this.pickerMarker.setLngLat(center);
@@ -279,7 +279,7 @@ export class MapComponent implements AfterViewInit, OnChanges, OnDestroy {
 
       this.map.flyTo({
         center: [lng, lat],
-        zoom: 14.5,
+        zoom: 18.5,
         speed: 1.4,
         curve: 1.4,
         essential: true
@@ -643,7 +643,7 @@ export class MapComponent implements AfterViewInit, OnChanges, OnDestroy {
       }
 
       this.map.setCenter([p.longitude, p.latitude]);
-      this.map.setZoom(14.5);
+      this.map.setZoom(18.5);
     } else {
       new mapboxgl.Marker({ color: '#10b981' })
         .setLngLat(this.center)
