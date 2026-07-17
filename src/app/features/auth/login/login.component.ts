@@ -14,6 +14,22 @@ import { AuthService } from '../../../core/services/auth.service';
       <div class="absolute top-1/4 left-1/4 w-96 h-96 bg-brand-500/10 rounded-full blur-3xl animate-pulse"></div>
       <div class="absolute bottom-1/3 right-1/4 w-80 h-80 bg-skybrand-500/10 rounded-full blur-3xl"></div>
 
+      <!-- Decorative Image: Bottom Left -->
+      <img 
+        src="https://i.ibb.co/ccmGDYJT/5ea71be8-b3a8-4cc7-84c6-ec15a7d6b37d.jpg"
+        alt="Land scenery"
+        class="absolute bottom-0 left-0 w-72 h-52 object-cover rounded-tr-3xl opacity-25 pointer-events-none z-0"
+        style="mask-image: linear-gradient(to top right, black 40%, transparent 100%); -webkit-mask-image: linear-gradient(to top right, black 40%, transparent 100%);"
+      />
+
+      <!-- Decorative Image: Top Right -->
+      <img 
+        src="https://i.ibb.co/0yYZhMN0/f013f5e9-2f96-4f07-8dae-5d60087d250e.jpg"
+        alt="Land aerial view"
+        class="absolute top-0 right-0 w-72 h-52 object-cover rounded-bl-3xl opacity-25 pointer-events-none z-0"
+        style="mask-image: linear-gradient(to bottom left, black 40%, transparent 100%); -webkit-mask-image: linear-gradient(to bottom left, black 40%, transparent 100%);"
+      />
+
       <!-- Glass Login Card -->
       <div class="w-full max-w-md p-8 glass-card-dark rounded-2xl shadow-2xl relative z-10 animate-slide-up border border-slate-800/60">
         
