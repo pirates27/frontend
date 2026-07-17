@@ -37,11 +37,6 @@ import { RoleType } from '../../../core/models/property.models';
         <!-- Logo Header -->
         <div class="text-center mb-8">
           <div class="inline-flex items-center gap-2 mb-3">
-            <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-600 to-skybrand-500 flex items-center justify-center shadow-lg">
-              <svg class="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
-              </svg>
-            </div>
             <span class="text-2xl font-bold tracking-tight text-white">Land<span class="text-brand-500">Lens</span></span>
           </div>
           <p class="text-slate-400 text-sm">Join a trusted platform for verified property listings</p>

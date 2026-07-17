@@ -36,11 +36,6 @@ import { AuthService } from '../../../core/services/auth.service';
         <!-- Logo Header -->
         <div class="text-center mb-8">
           <div class="inline-flex items-center gap-2 mb-3">
-            <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-600 to-skybrand-500 flex items-center justify-center shadow-lg">
-              <svg class="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 10l-2 1m0 0l-2-1m2 1v2.5M20 7l-2 1m2-1V5a2 2 0 00-2-2H9a2 2 0 00-2 2v2m13 0V9a2 2 0 01-2 2h-2M3 10V6a2 2 0 012-2h2m0 0V3m0 7v10a2 2 0 002 2h7a2 2 0 002-2v-2m-9 0H3" />
-              </svg>
-            </div>
             <span class="text-2xl font-bold tracking-tight text-white">Land<span class="text-brand-500">Lens</span></span>
           </div>
           <p class="text-slate-400 text-sm">AI-Powered Government Land Verification Portal</p>
