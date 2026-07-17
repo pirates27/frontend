@@ -18,16 +18,16 @@ import { AuthService } from '../../../core/services/auth.service';
       <img 
         src="https://i.ibb.co/0yYZhMN0/f013f5e9-2f96-4f07-8dae-5d60087d250e.jpg"
         alt="Land aerial view"
-        class="absolute bottom-0 left-0 w-[30rem] h-80 object-cover pointer-events-none z-0"
-        style="border-top-right-radius: 2rem; transform: translateY(-20px);"
+        class="absolute bottom-0 left-0 w-[32rem] object-contain pointer-events-none z-0"
+        style="border-top-right-radius: 2rem;"
       />
 
       <!-- Decorative Image: Top Right -->
       <img 
         src="https://i.ibb.co/ccmGDYJT/5ea71be8-b3a8-4cc7-84c6-ec15a7d6b37d.jpg"
         alt="Land scenery"
-        class="absolute top-0 right-0 w-[30rem] h-80 object-cover pointer-events-none z-0"
-        style="border-bottom-left-radius: 2rem; transform: translateY(20px);"
+        class="absolute top-0 right-0 w-[32rem] object-contain pointer-events-none z-0"
+        style="border-bottom-left-radius: 2rem;"
       />
 
       <!-- Glass Login Card -->
