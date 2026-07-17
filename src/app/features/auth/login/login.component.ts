@@ -9,10 +9,10 @@ import { AuthService } from '../../../core/services/auth.service';
   standalone: true,
   imports: [CommonModule, ReactiveFormsModule, RouterLink],
   template: `
-    <div class="min-h-screen flex items-center justify-center bg-radial from-slate-900 via-slate-950 to-black px-4 relative overflow-hidden">
+    <div class="min-h-screen flex items-center justify-center bg-white px-4 relative overflow-hidden">
       <!-- Ambient Background Glows -->
-      <div class="absolute top-1/4 left-1/4 w-96 h-96 bg-brand-500/10 rounded-full blur-3xl animate-pulse"></div>
-      <div class="absolute bottom-1/3 right-1/4 w-80 h-80 bg-skybrand-500/10 rounded-full blur-3xl"></div>
+      <div class="absolute top-1/4 left-1/4 w-96 h-96 bg-emerald-200/40 rounded-full blur-3xl animate-pulse"></div>
+      <div class="absolute bottom-1/3 right-1/4 w-80 h-80 bg-sky-200/40 rounded-full blur-3xl"></div>
 
       <!-- Decorative Image: Bottom Left -->
       <img 
