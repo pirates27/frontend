@@ -268,29 +268,55 @@ export class MapComponent implements AfterViewInit, OnChanges, OnDestroy {
       this.map.resize();
     }
 
-    // Put a draggable marker at picker coords
-    const color = '#10b981'; // emerald picker marker
-    this.pickerMarker = new mapboxgl.Marker({ color, draggable: true })
-      .setLngLat([this.pickerLng, this.pickerLat])
-      .addTo(this.map);
+    const initMarkerAt = (lng: number, lat: number) => {
+      const color = '#10b981'; // emerald picker marker
+      this.pickerMarker = new mapboxgl.Marker({ color, draggable: true })
+        .setLngLat([lng, lat])
+        .addTo(this.map);
 
-    this.map.setCenter([this.pickerLng, this.pickerLat]);
-    this.map.setZoom(14);
+      this.map.flyTo({
+        center: [lng, lat],
+        zoom: 15,
+        speed: 1.4,
+        curve: 1.4,
+        essential: true
+      });
 
-    const onMarkerMove = () => {
-      const lngLat = this.pickerMarker!.getLngLat();
+      const onMarkerMove = () => {
+        const lngLat = this.pickerMarker!.getLngLat();
+        this.zone.run(() => {
+          this.handleReverseGeocode(lngLat.lng, lngLat.lat);
+        });
+      };
+
+      this.pickerMarker.on('dragend', onMarkerMove);
+
+      // Initial emit
       this.zone.run(() => {
-        this.handleReverseGeocode(lngLat.lng, lngLat.lat);
+        this.handleReverseGeocode(lng, lat);
       });
     };
 
-    this.pickerMarker.on('dragend', onMarkerMove);
-
-    // Initial emit
-    this.zone.run(() => {
-      this.handleReverseGeocode(this.pickerLng, this.pickerLat);
-    });
+    // Try to get user's real location and fly there
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          this.zone.run(() => {
+            initMarkerAt(pos.coords.longitude, pos.coords.latitude);
+          });
+        },
+        () => {
+          // Permission denied or unavailable — fall back to default
+          initMarkerAt(this.pickerLng, this.pickerLat);
+        },
+        { timeout: 6000, maximumAge: 60000, enableHighAccuracy: true }
+      );
+    } else {
+      // Browser doesn't support geolocation
+      initMarkerAt(this.pickerLng, this.pickerLat);
+    }
   }
+
 
   private addBoundaryPointMarker(lng: number, lat: number, index: number): void {
     const el = document.createElement('div');

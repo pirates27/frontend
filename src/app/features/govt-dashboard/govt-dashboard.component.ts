@@ -1167,9 +1167,15 @@ export class GovtDashboardComponent implements OnInit {
   }
 
   loadData(): void {
-    // Load all properties and filter those pending Govt officer review
-    this.propertyService.getProperties().subscribe(properties => {
-      this.pendingProperties = properties.filter(p => p.status === 'PENDING_GOVT');
+    // Fetch properties PENDING Govt officer review directly via status filter
+    this.propertyService.getProperties({ status: 'PENDING_GOVT' }).subscribe({
+      next: (properties) => {
+        this.pendingProperties = properties;
+      },
+      error: (err) => {
+        console.error('Failed to load pending properties:', err);
+        this.pendingProperties = [];
+      }
     });
   }
 

@@ -71,6 +71,7 @@ export class AuthService {
         this.currentUser.set(user);
         this.userRole.set(user.role);
         localStorage.setItem('user_role', user.role);
+        localStorage.setItem('user_id', user.id); // persist for sync access on reload
       })
     );
   }
@@ -143,6 +144,7 @@ export class AuthService {
     localStorage.removeItem('access_token');
     localStorage.removeItem('refresh_token');
     localStorage.removeItem('user_role');
+    localStorage.removeItem('user_id');
   }
 
   redirectBasedOnRole(role: RoleType): void {

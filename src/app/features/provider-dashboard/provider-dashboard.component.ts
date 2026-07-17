@@ -18,6 +18,26 @@ import canvasConfetti from 'canvas-confetti';
   imports: [CommonModule, ReactiveFormsModule, FormsModule, MapComponent, VerificationBadgeComponent, PanoramaViewerComponent],
   template: `
     <div class="h-screen flex flex-col overflow-hidden bg-slate-50">
+
+      <!-- ── Success Toast ── -->
+      <div
+        *ngIf="successToast()"
+        class="fixed top-5 right-5 z-[9999] flex items-start gap-4 bg-white border border-emerald-200 shadow-2xl rounded-2xl px-5 py-4 max-w-sm animate-slide-in-right"
+        style="animation: slideInRight 0.4s ease-out;">
+        <div class="w-10 h-10 rounded-xl bg-emerald-500 flex items-center justify-center shrink-0">
+          <svg class="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7" />
+          </svg>
+        </div>
+        <div class="flex-1 min-w-0">
+          <p class="font-bold text-slate-800 text-sm">Property Submitted! 🎉</p>
+          <p class="text-xs text-slate-500 mt-0.5 leading-relaxed">Your listing has been queued for <span class="font-semibold text-emerald-600">AI Trust Score</span> verification. You will be notified once the analysis completes.</p>
+          <p *ngIf="submittedPropertyCode" class="text-[10px] font-mono text-slate-400 mt-1">Code: {{ submittedPropertyCode }}</p>
+        </div>
+        <button (click)="successToast.set(false)" class="shrink-0 text-slate-400 hover:text-slate-600 transition ml-1">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+        </button>
+      </div>
       <!-- Navbar -->
       <nav class="bg-slate-900 text-white shadow-lg shrink-0 z-30">
         <div class="px-4 sm:px-6 flex justify-between items-center h-16">
@@ -502,10 +522,10 @@ import canvasConfetti from 'canvas-confetti';
           </div>
 
           <!-- TAB 2: ADD PROPERTY FORM -->
-          <div *ngIf="activeTab === 'add'" class="bg-white rounded-2xl shadow-md border border-slate-100 p-6 space-y-6">
+          <div *ngIf="activeTab === 'add'" class="bg-white rounded-2xl shadow-md border border-slate-100 p-6 space-y-4">
             <div>
               <h2 class="text-xl font-bold text-slate-800">{{ isEditMode ? 'Edit Property Details' : 'Add New Property Listing' }}</h2>
-              <p class="text-xs text-slate-500 mt-1">Please fill in details. Pin exact coordinates on the map. The address geocodes automatically.</p>
+              <p class="text-xs text-slate-500 mt-1">Fill in the details on the left and pin the land boundary on the map on the right.</p>
             </div>
 
             <!-- Pre-fill / Clone tool -->
@@ -517,7 +537,7 @@ import canvasConfetti from 'canvas-confetti';
                   </svg>
                   Pre-fill / Clone Details
                 </h4>
-                <p class="text-[10px] text-slate-500 mt-0.5">Select an existing property from your catalog to auto-populate all fields and coordinates instantly.</p>
+                <p class="text-[10px] text-slate-500 mt-0.5">Select an existing property to auto-populate all fields instantly.</p>
               </div>
               <div class="w-full sm:w-64">
                 <select 
@@ -531,128 +551,133 @@ import canvasConfetti from 'canvas-confetti';
               </div>
             </div>
 
-            <!-- Form -->
-            <form [formGroup]="propertyForm" (ngSubmit)="onAddProperty()" class="space-y-6">
-              <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
-                
-                <!-- Title -->
-                <div class="md:col-span-2">
-                  <label class="block text-slate-700 text-xs font-semibold mb-1.5">Property Title</label>
-                  <input type="text" formControlName="title" placeholder="E.g., 2.5 Acres Wet Land near Bypass Road" class="w-full bg-white border border-slate-300 rounded-xl py-2.5 px-3 focus:outline-hidden focus:border-brand-500 text-xs" />
-                  <span *ngIf="propertyForm.get('title')?.touched && propertyForm.get('title')?.invalid" class="text-[10px] text-rose-500 mt-1 block">Title is required</span>
-                </div>
+            <!-- Two-Column Layout: Form (Left) + Map (Right) -->
+            <form [formGroup]="propertyForm" (ngSubmit)="onAddProperty()">
+              <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
 
-                <!-- Category -->
-                <div>
-                  <label class="block text-slate-700 text-xs font-semibold mb-1.5">Category</label>
-                  <select formControlName="category" class="w-full bg-white border border-slate-300 rounded-xl py-2.5 px-3 focus:outline-hidden focus:border-brand-500 text-xs appearance-none">
-                    <option value="AGRICULTURAL">Agricultural Plot</option>
-                    <option value="RESIDENTIAL">Residential Property</option>
-                    <option value="COMMERCIAL">Commercial space</option>
-                    <option value="INDUSTRIAL">Industrial site</option>
-                  </select>
-                </div>
+                <!-- ── LEFT COLUMN: All Form Fields ── -->
+                <div class="space-y-5">
 
-                <!-- Area -->
-                <div>
-                  <label class="block text-slate-700 text-xs font-semibold mb-1.5">Area (in acres)</label>
-                  <input type="number" formControlName="area" placeholder="2.5" step="0.01" class="w-full bg-white border border-slate-300 rounded-xl py-2.5 px-3 focus:outline-hidden focus:border-brand-500 text-xs" />
-                  <span *ngIf="propertyForm.get('area')?.touched && propertyForm.get('area')?.invalid" class="text-[10px] text-rose-500 mt-1 block">Area is required</span>
-                </div>
+                  <!-- Title + Category -->
+                  <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div class="sm:col-span-2">
+                      <label class="block text-slate-700 text-xs font-semibold mb-1.5">Property Title</label>
+                      <input type="text" formControlName="title" placeholder="E.g., 2.5 Acres Wet Land near Bypass Road" class="w-full bg-white border border-slate-300 rounded-xl py-2.5 px-3 focus:outline-hidden focus:border-brand-500 text-xs" />
+                      <span *ngIf="propertyForm.get('title')?.touched && propertyForm.get('title')?.invalid" class="text-[10px] text-rose-500 mt-1 block">Title is required</span>
+                    </div>
+                    <div>
+                      <label class="block text-slate-700 text-xs font-semibold mb-1.5">Category</label>
+                      <select formControlName="category" class="w-full bg-white border border-slate-300 rounded-xl py-2.5 px-3 focus:outline-hidden focus:border-brand-500 text-xs appearance-none">
+                        <option value="AGRICULTURAL">Agricultural Plot</option>
+                        <option value="RESIDENTIAL">Residential Property</option>
+                        <option value="COMMERCIAL">Commercial space</option>
+                        <option value="INDUSTRIAL">Industrial site</option>
+                      </select>
+                    </div>
+                  </div>
 
-                <!-- Price -->
-                <div>
-                  <label class="block text-slate-700 text-xs font-semibold mb-1.5">Price (INR ₹)</label>
-                  <input type="number" formControlName="price" placeholder="4500000" class="w-full bg-white border border-slate-300 rounded-xl py-2.5 px-3 focus:outline-hidden focus:border-brand-500 text-xs" />
-                  <span *ngIf="propertyForm.get('price')?.touched && propertyForm.get('price')?.invalid" class="text-[10px] text-rose-500 mt-1 block">Price is required</span>
-                </div>
+                  <!-- Area + Price + Survey -->
+                  <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div>
+                      <label class="block text-slate-700 text-xs font-semibold mb-1.5">Area (in acres)</label>
+                      <input type="number" formControlName="area" placeholder="2.5" step="0.01" class="w-full bg-white border border-slate-300 rounded-xl py-2.5 px-3 focus:outline-hidden focus:border-brand-500 text-xs" />
+                      <span *ngIf="propertyForm.get('area')?.touched && propertyForm.get('area')?.invalid" class="text-[10px] text-rose-500 mt-1 block">Area is required</span>
+                    </div>
+                    <div>
+                      <label class="block text-slate-700 text-xs font-semibold mb-1.5">Price (INR ₹)</label>
+                      <input type="number" formControlName="price" placeholder="4500000" class="w-full bg-white border border-slate-300 rounded-xl py-2.5 px-3 focus:outline-hidden focus:border-brand-500 text-xs" />
+                      <span *ngIf="propertyForm.get('price')?.touched && propertyForm.get('price')?.invalid" class="text-[10px] text-rose-500 mt-1 block">Price is required</span>
+                    </div>
+                    <div>
+                      <label class="block text-slate-700 text-xs font-semibold mb-1.5">Survey No. / Patta</label>
+                      <input type="text" formControlName="surveyNumber" placeholder="45-A/12" class="w-full bg-white border border-slate-300 rounded-xl py-2.5 px-3 focus:outline-hidden focus:border-brand-500 text-xs" />
+                      <span *ngIf="propertyForm.get('surveyNumber')?.touched && propertyForm.get('surveyNumber')?.invalid" class="text-[10px] text-rose-500 mt-1 block">Required</span>
+                    </div>
+                  </div>
 
-                <!-- Survey Number -->
-                <div>
-                  <label class="block text-slate-700 text-xs font-semibold mb-1.5">Survey Number / Patta Passbook</label>
-                  <input type="text" formControlName="surveyNumber" placeholder="45-A/12" class="w-full bg-white border border-slate-300 rounded-xl py-2.5 px-3 focus:outline-hidden focus:border-brand-500 text-xs" />
-                  <span *ngIf="propertyForm.get('surveyNumber')?.touched && propertyForm.get('surveyNumber')?.invalid" class="text-[10px] text-rose-500 mt-1 block">Survey Number is required</span>
-                </div>
+                  <!-- Description -->
+                  <div>
+                    <label class="block text-slate-700 text-xs font-semibold mb-1.5">Detailed Description</label>
+                    <textarea formControlName="description" rows="3" placeholder="Describe soil fertility, water canal access, road accessibility..." class="w-full bg-white border border-slate-300 rounded-xl py-2.5 px-3 focus:outline-hidden focus:border-brand-500 text-xs"></textarea>
+                  </div>
 
-              </div>
+                  <!-- Address fields -->
+                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div class="sm:col-span-2">
+                      <label class="block text-slate-700 text-xs font-semibold mb-1.5">Address</label>
+                      <input type="text" formControlName="address" class="w-full bg-white border border-slate-300 rounded-xl py-2 px-3 focus:outline-hidden focus:border-brand-500 text-xs" />
+                    </div>
+                    <div>
+                      <label class="block text-slate-700 text-xs font-semibold mb-1.5">Village / Locality</label>
+                      <input type="text" formControlName="village" class="w-full bg-white border border-slate-300 rounded-xl py-2 px-3 focus:outline-hidden focus:border-brand-500 text-xs" />
+                    </div>
+                    <div>
+                      <label class="block text-slate-700 text-xs font-semibold mb-1.5">Pincode</label>
+                      <input type="text" formControlName="pincode" class="w-full bg-white border border-slate-300 rounded-xl py-2 px-3 focus:outline-hidden focus:border-brand-500 text-xs" />
+                    </div>
+                  </div>
 
-              <!-- Description -->
-              <div>
-                <label class="block text-slate-700 text-xs font-semibold mb-1.5">Detailed Description</label>
-                <textarea formControlName="description" rows="3" placeholder="Describe soil fertility, water canal access, road accessibility..." class="w-full bg-white border border-slate-300 rounded-xl py-2.5 px-3 focus:outline-hidden focus:border-brand-500 text-xs"></textarea>
-              </div>
+                  <!-- 360 Panorama URL & Live Preview -->
+                  <div class="space-y-3">
+                    <div>
+                      <label class="block text-slate-700 text-xs font-semibold mb-1.5">
+                        360° Panorama / Virtual Tour URL or Iframe Embed
+                        <span class="ml-1 text-slate-400 font-normal">(Optional)</span>
+                      </label>
+                      <textarea 
+                        rows="2"
+                        (input)="onThreeSixtyInputChange($event)"
+                        formControlName="threeSixtyImageUrl" 
+                        placeholder='Paste share URL or <iframe src="https://..."></iframe> embed code...' 
+                        class="w-full bg-white border border-slate-300 rounded-xl py-2.5 px-3 focus:outline-hidden focus:border-emerald-500 text-xs"></textarea>
+                      <p class="text-[10px] text-slate-400 mt-1">Supports: Momento360, Kuula, Google Maps 360°, 360PhotoCam</p>
+                    </div>
+                    <!-- Live Preview Pane -->
+                    <div *ngIf="propertyForm.get('threeSixtyImageUrl')?.value" class="space-y-1.5">
+                      <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Live 360° Panorama Preview</span>
+                      <div class="h-[200px] w-full rounded-2xl overflow-hidden border border-slate-200">
+                        <app-panorama-viewer [url]="propertyForm.get('threeSixtyImageUrl')?.value"></app-panorama-viewer>
+                      </div>
+                    </div>
+                  </div>
 
-              <!-- Map Picker -->
-              <div>
-                <label class="block text-slate-700 text-xs font-semibold mb-2">Pin Land Boundary Location (Drag Pin)</label>
-                <div class="h-[350px] w-full">
-                  <app-map mode="picker" [initialBoundary]="lastDrawnBoundary" (locationSelected)="onLocationSelected($event)"></app-map>
-                </div>
-              </div>
-
-              <!-- Coordinates Display & Address Auto-fill -->
-              <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs">
-                <div>
-                  <span class="text-slate-400 font-medium block">Latitude</span>
-                  <span class="font-bold text-slate-700">{{ propertyForm.get('latitude')?.value }}</span>
-                </div>
-                <div>
-                  <span class="text-slate-400 font-medium block">Longitude</span>
-                  <span class="font-bold text-slate-700">{{ propertyForm.get('longitude')?.value }}</span>
-                </div>
-                <div class="col-span-2">
-                  <span class="text-slate-400 font-medium block">Geocoded District / State</span>
-                  <span class="font-bold text-slate-700">{{ propertyForm.get('district')?.value }}, {{ propertyForm.get('state')?.value }}</span>
-                </div>
-              </div>
-
-              <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-                <!-- Address -->
-                <div class="sm:col-span-2">
-                  <label class="block text-slate-700 text-xs font-semibold mb-1.5">Address</label>
-                  <input type="text" formControlName="address" class="w-full bg-white border border-slate-300 rounded-xl py-2 px-3 focus:outline-hidden focus:border-brand-500 text-xs" />
-                </div>
-                <!-- Village -->
-                <div>
-                  <label class="block text-slate-700 text-xs font-semibold mb-1.5">Village / Locality</label>
-                  <input type="text" formControlName="village" class="w-full bg-white border border-slate-300 rounded-xl py-2 px-3 focus:outline-hidden focus:border-brand-500 text-xs" />
-                </div>
-                <!-- Pincode -->
-                <div>
-                  <label class="block text-slate-700 text-xs font-semibold mb-1.5">Pincode</label>
-                  <input type="text" formControlName="pincode" class="w-full bg-white border border-slate-300 rounded-xl py-2 px-3 focus:outline-hidden focus:border-brand-500 text-xs" />
-                </div>
-              </div>
-
-              <!-- 360 Panorama URL & Live Preview -->
-              <div class="space-y-3">
-                <div>
-                  <label class="block text-slate-700 text-xs font-semibold mb-1.5">360° Panorama / Virtual Tour URL or Iframe Embed (Required)</label>
-                  <textarea 
-                    rows="2"
-                    (input)="onThreeSixtyInputChange($event)"
-                    formControlName="threeSixtyImageUrl" 
-                    placeholder='Paste share URL or <iframe src="https://..."></iframe> embed code...' 
-                    class="w-full bg-white border border-slate-300 rounded-xl py-2.5 px-3 focus:outline-hidden focus:border-emerald-500 text-xs"></textarea>
-                  <span *ngIf="propertyForm.get('threeSixtyImageUrl')?.touched && propertyForm.get('threeSixtyImageUrl')?.invalid" class="text-[10px] text-rose-500 mt-1 block">A valid virtual tour link (Google Maps, Momento360, Kuula, 360PhotoCam) or iframe embed code is required</span>
-                </div>
-
-                <!-- Live Preview Pane -->
-                <div *ngIf="propertyForm.get('threeSixtyImageUrl')?.value && propertyForm.get('threeSixtyImageUrl')?.valid" class="space-y-1.5">
-                  <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Live 360° Panorama Preview</span>
-                  <div class="h-[250px] w-full rounded-2xl overflow-hidden border border-slate-200">
-                    <app-panorama-viewer [url]="propertyForm.get('threeSixtyImageUrl')?.value"></app-panorama-viewer>
+                  <!-- Actions -->
+                  <div class="flex justify-end gap-3 pt-4 border-t border-slate-100">
+                    <button type="button" (click)="activeTab = 'listings'" class="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs rounded-xl transition">Cancel</button>
+                    <button type="submit" [disabled]="propertyForm.invalid || isSaving" class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs rounded-xl transition shadow-md disabled:opacity-50 flex items-center gap-1.5">
+                      <span *ngIf="isSaving" class="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                      {{ isEditMode ? 'Update Listing' : 'Save Listing' }}
+                    </button>
                   </div>
                 </div>
-              </div>
 
-              <!-- Actions -->
-              <div class="flex justify-end gap-3 pt-4 border-t border-slate-100">
-                <button type="button" (click)="activeTab = 'listings'" class="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs rounded-xl transition">Cancel</button>
-                <button type="submit" [disabled]="propertyForm.invalid || isSaving" class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs rounded-xl transition shadow-md disabled:opacity-50 flex items-center gap-1.5">
-                  <span *ngIf="isSaving" class="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
-                  {{ isEditMode ? 'Update Listing' : 'Save Listing' }}
-                </button>
+                <!-- ── RIGHT COLUMN: Map + Coordinates (Sticky) ── -->
+                <div class="lg:sticky lg:top-4 space-y-4">
+                  <div>
+                    <label class="block text-slate-700 text-xs font-semibold mb-2">📍 Pin Land Boundary on Map</label>
+                    <p class="text-[10px] text-slate-400 mb-2">Click or drag the marker to set the exact land location. Address fields auto-fill from GPS coordinates.</p>
+                    <div class="h-[420px] w-full rounded-2xl overflow-hidden border border-slate-200 shadow-sm">
+                      <app-map mode="picker" [initialBoundary]="lastDrawnBoundary" (locationSelected)="onLocationSelected($event)"></app-map>
+                    </div>
+                  </div>
+
+                  <!-- Coordinates Display -->
+                  <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 grid grid-cols-2 gap-4 text-xs">
+                    <div>
+                      <span class="text-slate-400 font-medium block">Latitude</span>
+                      <span class="font-bold text-slate-700">{{ propertyForm.get('latitude')?.value }}</span>
+                    </div>
+                    <div>
+                      <span class="text-slate-400 font-medium block">Longitude</span>
+                      <span class="font-bold text-slate-700">{{ propertyForm.get('longitude')?.value }}</span>
+                    </div>
+                    <div class="col-span-2">
+                      <span class="text-slate-400 font-medium block">Geocoded District / State</span>
+                      <span class="font-bold text-slate-700">{{ propertyForm.get('district')?.value }}, {{ propertyForm.get('state')?.value }}</span>
+                    </div>
+                  </div>
+                </div>
+
               </div>
             </form>
           </div>
@@ -765,6 +790,8 @@ export class ProviderDashboardComponent implements OnInit {
   selectedProperty = signal<Models.Property | null>(null);
   pendingVisitsCount = signal<number>(0);
   unreadNotificationsCount = signal<number>(0);
+  successToast = signal<boolean>(false);
+  submittedPropertyCode: string | null = null;
 
   // Lists corresponding to selectedProperty
   propertyImages: Models.PropertyImage[] = [];
@@ -811,18 +838,26 @@ export class ProviderDashboardComponent implements OnInit {
       village: ['Gorantla', [Validators.required]],
       state: ['Andhra Pradesh', [Validators.required]],
       pincode: ['522034', [Validators.required]],
-      threeSixtyImageUrl: ['', [Validators.required, Validators.pattern(/momento360\.com|kuula\.co|google\..*?\/maps|360photocam\.com/)]]
+      threeSixtyImageUrl: [''] // Optional — sellers can add the 360° tour later
     });
   }
 
   loadData(): void {
-    // Load properties
-    this.propertyService.getProperties().subscribe(properties => {
-      const user = this.authService.currentUser();
-      if (user && user.id) {
-        this.myProperties = properties.filter(p => p.providerId === user.id);
-      } else {
-        this.myProperties = properties;
+    // Load all statuses for this provider (PENDING_AI, PENDING_GOVT, APPROVED, REJECTED etc.)
+    this.propertyService.getProperties().subscribe({
+      next: (properties) => {
+        // currentUser signal might not be populated yet on page reload (async getProfile).
+        // Fall back to the persisted user_id in localStorage.
+        const userId = this.authService.currentUser()?.id || localStorage.getItem('user_id');
+        if (userId) {
+          this.myProperties = properties.filter(p => p.providerId === userId);
+        } else {
+          this.myProperties = properties;
+        }
+      },
+      error: (err) => {
+        console.error('Failed to load provider properties:', err);
+        this.myProperties = [];
       }
     });
   }
@@ -987,31 +1022,60 @@ export class ProviderDashboardComponent implements OnInit {
 
   // Add/Edit Listing Submit
   onAddProperty(): void {
-    if (this.propertyForm.invalid) return;
+    if (this.propertyForm.invalid) {
+      // Mark all fields as touched so validation errors are visible
+      this.propertyForm.markAllAsTouched();
+      console.warn('Form is invalid:', this.propertyForm.errors, this.propertyForm.value);
+      return;
+    }
 
     this.isSaving = true;
-    const payload = { ...this.propertyForm.value };
-    
+    const raw = this.propertyForm.value;
+
+    // Build a clean payload matching the backend PropertyRequestDto exactly
+    const payload: any = {
+      title: raw.title,
+      category: raw.category,
+      area: Number(raw.area),
+      price: Number(raw.price),
+      description: raw.description || '',
+      surveyNumber: raw.surveyNumber,
+      address: raw.address,
+      latitude: Number(raw.latitude),
+      longitude: Number(raw.longitude),
+      district: raw.district,
+      village: raw.village,
+      state: raw.state,
+      pincode: String(raw.pincode),
+      threeSixtyImageUrl: raw.threeSixtyImageUrl || null
+    };
+
     if (this.lastDrawnBoundary && this.lastDrawnBoundary.length > 0) {
-      payload.description = (payload.description || '') + 
+      payload.description = (payload.description || '') +
         `\n\n[BOUNDS]: ${JSON.stringify(this.lastDrawnBoundary)}`;
     }
 
     if (this.isEditMode && this.editingPropertyId) {
-      payload.status = 'PENDING_GOVT'; // Reset status for govt re-verify
       this.propertyService.updateProperty(this.editingPropertyId, payload).subscribe({
         next: () => this.finishSave(),
-        error: () => this.isSaving = false
+        error: (err) => {
+          console.error('Failed to update property:', err);
+          this.isSaving = false;
+        }
       });
     } else {
       this.propertyService.createProperty(payload).subscribe({
-        next: () => this.finishSave(),
-        error: () => this.isSaving = false
+        next: (res) => this.finishSave(res?.propertyCode),
+        error: (err) => {
+          console.error('Failed to create property:', err);
+          alert(`Error saving property: ${err?.error?.message || err?.message || 'Unknown error. Check console.'}`);
+          this.isSaving = false;
+        }
       });
     }
   }
 
-  private finishSave(): void {
+  private finishSave(propertyCode?: string): void {
     this.isSaving = false;
     this.lastDrawnBoundary = [];
     this.isEditMode = false;
@@ -1027,6 +1091,11 @@ export class ProviderDashboardComponent implements OnInit {
     });
     this.activeTab = 'listings';
     this.loadData();
+
+    // Show success toast
+    this.submittedPropertyCode = propertyCode || null;
+    this.successToast.set(true);
+    setTimeout(() => this.successToast.set(false), 6000);
   }
 
   openAddPropertyForm(): void {
