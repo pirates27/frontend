@@ -32,6 +32,7 @@ export interface Property {
   threeSixtyImageUrl?: string;
   status: PropertyStatus;
   providerId: string;
+  provider?: User;
   createdAt?: string;
   updatedAt?: string;
 }

@@ -900,7 +900,7 @@ export class ProviderDashboardComponent implements OnInit {
         // Fall back to the persisted user_id in localStorage.
         const userId = this.authService.currentUser()?.id || localStorage.getItem('user_id');
         if (userId) {
-          this.myProperties = properties.filter(p => p.providerId === userId);
+          this.myProperties = properties.filter(p => p.providerId === userId || p.provider?.id === userId);
         } else {
           this.myProperties = properties;
         }
