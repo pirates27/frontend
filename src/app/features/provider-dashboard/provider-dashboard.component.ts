@@ -154,9 +154,49 @@ import canvasConfetti from 'canvas-confetti';
               </button>
             </div>
 
+            <!-- Tab Filter Bar -->
+            <div class="flex flex-wrap border-b border-slate-100 bg-white p-3 rounded-2xl shadow-xs gap-2 sm:gap-4" *ngIf="myProperties.length > 0">
+              <button 
+                type="button"
+                (click)="listingFilterTab = 'all'"
+                [class.text-emerald-600]="listingFilterTab === 'all'"
+                [class.border-emerald-500]="listingFilterTab === 'all'"
+                [class.bg-emerald-50]="listingFilterTab === 'all'"
+                class="px-4 py-2 border-b-2 border-transparent font-bold text-xs text-slate-500 hover:text-slate-800 transition-all rounded-lg flex items-center gap-1.5">
+                All ({{ myProperties.length }})
+              </button>
+              <button 
+                type="button"
+                (click)="listingFilterTab = 'pending'"
+                [class.text-emerald-600]="listingFilterTab === 'pending'"
+                [class.border-emerald-500]="listingFilterTab === 'pending'"
+                [class.bg-emerald-50]="listingFilterTab === 'pending'"
+                class="px-4 py-2 border-b-2 border-transparent font-bold text-xs text-slate-500 hover:text-slate-800 transition-all rounded-lg flex items-center gap-1.5">
+                Pending Verification ({{ getPendingCount() }})
+              </button>
+              <button 
+                type="button"
+                (click)="listingFilterTab = 'approved'"
+                [class.text-emerald-600]="listingFilterTab === 'approved'"
+                [class.border-emerald-500]="listingFilterTab === 'approved'"
+                [class.bg-emerald-50]="listingFilterTab === 'approved'"
+                class="px-4 py-2 border-b-2 border-transparent font-bold text-xs text-slate-500 hover:text-slate-800 transition-all rounded-lg flex items-center gap-1.5">
+                Approved ({{ getApprovedCount() }})
+              </button>
+              <button 
+                type="button"
+                (click)="listingFilterTab = 'rejected'"
+                [class.text-emerald-600]="listingFilterTab === 'rejected'"
+                [class.border-emerald-500]="listingFilterTab === 'rejected'"
+                [class.bg-emerald-50]="listingFilterTab === 'rejected'"
+                class="px-4 py-2 border-b-2 border-transparent font-bold text-xs text-slate-500 hover:text-slate-800 transition-all rounded-lg flex items-center gap-1.5">
+                Rejected ({{ getRejectedCount() }})
+              </button>
+            </div>
+
             <!-- Property Catalog Grid -->
-            <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5" *ngIf="myProperties.length > 0">
-              <div *ngFor="let p of myProperties" 
+            <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5" *ngIf="filteredProperties.length > 0">
+              <div *ngFor="let p of filteredProperties" 
                    (click)="selectProperty(p)"
                    [class.ring-2]="selectedProperty()?.id === p.id"
                    [class.ring-emerald-500]="selectedProperty()?.id === p.id"
@@ -260,6 +300,15 @@ import canvasConfetti from 'canvas-confetti';
               <button (click)="openAddPropertyForm()" class="mt-6 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-sm rounded-xl transition-all shadow-md">
                 Add Property
               </button>
+            </div>
+
+            <!-- Empty State for active filter tab (when they have cataloged properties but none match the current filter status) -->
+            <div *ngIf="myProperties.length > 0 && filteredProperties.length === 0" class="bg-white rounded-2xl shadow-xs border border-slate-100 p-12 text-center">
+              <svg class="w-12 h-12 text-slate-300 mx-auto mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              <h4 class="font-bold text-slate-700 text-sm">No properties in this category</h4>
+              <p class="text-xs text-slate-500 mt-1">You currently have no properties matching the selected status filter.</p>
             </div>
 
             <!-- DETAIL MANAGEMENT PANEL -->
@@ -780,6 +829,7 @@ export class ProviderDashboardComponent implements OnInit {
 
   activeTab: 'listings' | 'add' | 'visits' | 'notifications' = 'listings';
   detailSubTab: 'verify' | 'media' | 'docs' | 'timeline' = 'verify';
+  listingFilterTab: 'all' | 'pending' | 'approved' | 'rejected' = 'all';
 
   myProperties: Models.Property[] = [];
   myVisits: Models.PropertyVisit[] = [];
@@ -1213,5 +1263,30 @@ export class ProviderDashboardComponent implements OnInit {
 
   logout(): void {
     this.authService.logout().subscribe();
+  }
+
+  getPendingCount(): number {
+    return this.myProperties.filter(p => p.status === 'PENDING_AI' || p.status === 'PENDING_GOVT').length;
+  }
+
+  getApprovedCount(): number {
+    return this.myProperties.filter(p => p.status === 'APPROVED').length;
+  }
+
+  getRejectedCount(): number {
+    return this.myProperties.filter(p => p.status === 'REJECTED').length;
+  }
+
+  get filteredProperties(): Models.Property[] {
+    if (this.listingFilterTab === 'pending') {
+      return this.myProperties.filter(p => p.status === 'PENDING_AI' || p.status === 'PENDING_GOVT');
+    }
+    if (this.listingFilterTab === 'approved') {
+      return this.myProperties.filter(p => p.status === 'APPROVED');
+    }
+    if (this.listingFilterTab === 'rejected') {
+      return this.myProperties.filter(p => p.status === 'REJECTED');
+    }
+    return this.myProperties;
   }
 }
