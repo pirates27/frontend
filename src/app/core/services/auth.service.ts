@@ -24,7 +24,7 @@ export class AuthService {
   accessToken = signal<string | null>(localStorage.getItem('access_token'));
   refreshTokenSignal = signal<string | null>(localStorage.getItem('refresh_token'));
   userRole = signal<RoleType | null>(localStorage.getItem('user_role') as RoleType);
-
+  //asasmashwsdk ahbvroziv 
   constructor() {
     // If we have an access token on start, try to load profile silently
     if (this.accessToken() || localStorage.getItem('access_token')) {
