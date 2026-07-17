@@ -20,7 +20,7 @@ import { RoleType } from '../../../core/models/property.models';
         src="https://i.ibb.co/0yYZhMN0/f013f5e9-2f96-4f07-8dae-5d60087d250e.jpg"
         alt="Land aerial view"
         class="absolute bottom-0 left-0 w-[32rem] object-contain pointer-events-none z-0"
-        style="border-top-right-radius: 2rem;"
+        style="-webkit-mask-image: linear-gradient(to top right, black 20%, transparent 75%); mask-image: linear-gradient(to top right, black 20%, transparent 75%);"
       />
 
       <!-- Decorative Image: Top Right -->
@@ -28,7 +28,7 @@ import { RoleType } from '../../../core/models/property.models';
         src="https://i.ibb.co/ccmGDYJT/5ea71be8-b3a8-4cc7-84c6-ec15a7d6b37d.jpg"
         alt="Land scenery"
         class="absolute top-0 right-0 w-[32rem] object-contain pointer-events-none z-0"
-        style="border-bottom-left-radius: 2rem;"
+        style="-webkit-mask-image: linear-gradient(to bottom left, black 20%, transparent 75%); mask-image: linear-gradient(to bottom left, black 20%, transparent 75%);"
       />
 
       <!-- Glass Register Card -->
