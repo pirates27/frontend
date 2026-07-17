@@ -608,6 +608,8 @@ export class MapComponent implements AfterViewInit, OnChanges, OnDestroy {
             .addTo(this.map);
           this.markers.push(m);
         });
+        
+        this.drawPolygon();
       } else {
         // Draw details boundary hexagon approximation fallback
         this.drawVisualBoundary(p.longitude, p.latitude, p.area);
