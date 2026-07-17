@@ -154,421 +154,433 @@ import canvasConfetti from 'canvas-confetti';
               </button>
             </div>
 
-            <!-- Tab Filter Bar -->
-            <div class="flex flex-wrap border-b border-slate-100 bg-white p-3 rounded-2xl shadow-xs gap-2 sm:gap-4" *ngIf="myProperties.length > 0">
-              <button 
-                type="button"
-                (click)="listingFilterTab = 'all'"
-                [class.text-emerald-600]="listingFilterTab === 'all'"
-                [class.border-emerald-500]="listingFilterTab === 'all'"
-                [class.bg-emerald-50]="listingFilterTab === 'all'"
-                class="px-4 py-2 border-b-2 border-transparent font-bold text-xs text-slate-500 hover:text-slate-800 transition-all rounded-lg flex items-center gap-1.5">
-                All ({{ myProperties.length }})
-              </button>
-              <button 
-                type="button"
-                (click)="listingFilterTab = 'pending'"
-                [class.text-emerald-600]="listingFilterTab === 'pending'"
-                [class.border-emerald-500]="listingFilterTab === 'pending'"
-                [class.bg-emerald-50]="listingFilterTab === 'pending'"
-                class="px-4 py-2 border-b-2 border-transparent font-bold text-xs text-slate-500 hover:text-slate-800 transition-all rounded-lg flex items-center gap-1.5">
-                Pending Verification ({{ getPendingCount() }})
-              </button>
-              <button 
-                type="button"
-                (click)="listingFilterTab = 'approved'"
-                [class.text-emerald-600]="listingFilterTab === 'approved'"
-                [class.border-emerald-500]="listingFilterTab === 'approved'"
-                [class.bg-emerald-50]="listingFilterTab === 'approved'"
-                class="px-4 py-2 border-b-2 border-transparent font-bold text-xs text-slate-500 hover:text-slate-800 transition-all rounded-lg flex items-center gap-1.5">
-                Approved ({{ getApprovedCount() }})
-              </button>
-              <button 
-                type="button"
-                (click)="listingFilterTab = 'rejected'"
-                [class.text-emerald-600]="listingFilterTab === 'rejected'"
-                [class.border-emerald-500]="listingFilterTab === 'rejected'"
-                [class.bg-emerald-50]="listingFilterTab === 'rejected'"
-                class="px-4 py-2 border-b-2 border-transparent font-bold text-xs text-slate-500 hover:text-slate-800 transition-all rounded-lg flex items-center gap-1.5">
-                Rejected ({{ getRejectedCount() }})
-              </button>
-            </div>
+            <!-- Side-by-side flex layout container -->
+            <div class="flex flex-col lg:flex-row gap-6 items-start w-full relative">
+              
+              <!-- Left side: Listings Grid (takes 70% if detail is open, else 100%) -->
+              <div class="transition-all duration-500 ease-in-out space-y-6 w-full"
+                   [ngClass]="selectedProperty() ? 'lg:flex-grow lg:w-[70%] lg:max-w-[70%]' : 'w-full'">
+                   
+                <!-- Tab Filter Bar -->
+                <div class="flex flex-wrap border-b border-slate-100 bg-white p-3 rounded-2xl shadow-xs gap-2 sm:gap-4" *ngIf="myProperties.length > 0">
+                  <button 
+                    type="button"
+                    (click)="listingFilterTab = 'all'"
+                    [class.text-emerald-600]="listingFilterTab === 'all'"
+                    [class.border-emerald-500]="listingFilterTab === 'all'"
+                    [class.bg-emerald-50]="listingFilterTab === 'all'"
+                    class="px-4 py-2 border-b-2 border-transparent font-bold text-xs text-slate-500 hover:text-slate-800 transition-all rounded-lg flex items-center gap-1.5">
+                    All ({{ myProperties.length }})
+                  </button>
+                  <button 
+                    type="button"
+                    (click)="listingFilterTab = 'pending'"
+                    [class.text-emerald-600]="listingFilterTab === 'pending'"
+                    [class.border-emerald-500]="listingFilterTab === 'pending'"
+                    [class.bg-emerald-50]="listingFilterTab === 'pending'"
+                    class="px-4 py-2 border-b-2 border-transparent font-bold text-xs text-slate-500 hover:text-slate-800 transition-all rounded-lg flex items-center gap-1.5">
+                    Pending Verification ({{ getPendingCount() }})
+                  </button>
+                  <button 
+                    type="button"
+                    (click)="listingFilterTab = 'approved'"
+                    [class.text-emerald-600]="listingFilterTab === 'approved'"
+                    [class.border-emerald-500]="listingFilterTab === 'approved'"
+                    [class.bg-emerald-50]="listingFilterTab === 'approved'"
+                    class="px-4 py-2 border-b-2 border-transparent font-bold text-xs text-slate-500 hover:text-slate-800 transition-all rounded-lg flex items-center gap-1.5">
+                    Approved ({{ getApprovedCount() }})
+                  </button>
+                  <button 
+                    type="button"
+                    (click)="listingFilterTab = 'rejected'"
+                    [class.text-emerald-600]="listingFilterTab === 'rejected'"
+                    [class.border-emerald-500]="listingFilterTab === 'rejected'"
+                    [class.bg-emerald-50]="listingFilterTab === 'rejected'"
+                    class="px-4 py-2 border-b-2 border-transparent font-bold text-xs text-slate-500 hover:text-slate-800 transition-all rounded-lg flex items-center gap-1.5">
+                    Rejected ({{ getRejectedCount() }})
+                  </button>
+                </div>
 
-            <!-- Property Catalog Grid -->
-            <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5" *ngIf="filteredProperties.length > 0">
-              <div *ngFor="let p of filteredProperties" 
-                   (click)="selectProperty(p)"
-                   [class.ring-2]="selectedProperty()?.id === p.id"
-                   [class.ring-emerald-500]="selectedProperty()?.id === p.id"
-                   class="bg-white rounded-2xl shadow-xs border border-slate-100 overflow-hidden hover:shadow-lg transition-all duration-300 cursor-pointer flex flex-col group">
+                <!-- Property Catalog Grid -->
+                <div [ngClass]="selectedProperty() ? 'grid grid-cols-1 xl:grid-cols-2 gap-5' : 'grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5'" *ngIf="filteredProperties.length > 0">
+                  <div *ngFor="let p of filteredProperties" 
+                       (click)="selectProperty(p)"
+                       [class.ring-2]="selectedProperty()?.id === p.id"
+                       [class.ring-emerald-500]="selectedProperty()?.id === p.id"
+                       class="bg-white rounded-2xl shadow-xs border border-slate-100 overflow-hidden hover:shadow-lg transition-all duration-300 cursor-pointer flex flex-col group">
 
-                <!-- ── Preview Zone: Street View OR Image Slider ── -->
-                <div class="relative h-44 bg-slate-900 overflow-hidden shrink-0">
+                    <!-- ── Preview Zone: Street View OR Image Slider ── -->
+                    <div class="relative h-44 bg-slate-900 overflow-hidden shrink-0">
 
-                  <!-- Street View Iframe (auto-visible, no controls) -->
-                  <ng-container *ngIf="p.threeSixtyImageUrl">
-                    <iframe 
-                      [src]="sanitize(p.threeSixtyImageUrl)"
-                      class="absolute top-0 left-0 h-full border-0 pointer-events-none scale-[1.08]"
-                      style="width: calc(100% + 50px); max-width: none;"
-                      allowfullscreen
-                      loading="lazy">
-                    </iframe>
-                    <!-- Dark gradient overlay for legibility -->
-                    <div class="absolute inset-0 bg-gradient-to-t from-slate-900/70 via-transparent to-transparent"></div>
-                    <!-- 360 badge -->
-                    <div class="absolute top-2.5 left-2.5 flex items-center gap-1.5 bg-slate-900/80 text-white text-[9px] font-bold px-2.5 py-1 rounded-full backdrop-blur-sm">
-                      <span class="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-ping"></span>
-                      360° LIVE
-                    </div>
-                    <!-- Open button -->
-                    <a [href]="p.threeSixtyImageUrl" target="_blank" (click)="$event.stopPropagation()"
-                       class="absolute bottom-2.5 right-2.5 bg-emerald-600/90 hover:bg-emerald-500 text-white text-[9px] font-bold px-2.5 py-1 rounded-lg flex items-center gap-1 shadow backdrop-blur-sm transition-all">
-                      <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
-                      Open Street View
-                    </a>
-                  </ng-container>
+                      <!-- Street View Iframe (auto-visible, no controls) -->
+                      <ng-container *ngIf="p.threeSixtyImageUrl">
+                        <iframe 
+                          [src]="sanitize(p.threeSixtyImageUrl)"
+                          class="absolute top-0 left-0 h-full border-0 pointer-events-none scale-[1.08]"
+                          style="width: calc(100% + 50px); max-width: none;"
+                          allowfullscreen
+                          loading="lazy">
+                        </iframe>
+                        <!-- Dark gradient overlay for legibility -->
+                        <div class="absolute inset-0 bg-gradient-to-t from-slate-900/70 via-transparent to-transparent"></div>
+                        <!-- 360 badge -->
+                        <div class="absolute top-2.5 left-2.5 flex items-center gap-1.5 bg-slate-900/80 text-white text-[9px] font-bold px-2.5 py-1 rounded-full backdrop-blur-sm">
+                          <span class="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-ping"></span>
+                          360° LIVE
+                        </div>
+                        <!-- Open button -->
+                        <a [href]="p.threeSixtyImageUrl" target="_blank" (click)="$event.stopPropagation()"
+                           class="absolute bottom-2.5 right-2.5 bg-emerald-600/90 hover:bg-emerald-500 text-white text-[9px] font-bold px-2.5 py-1 rounded-lg flex items-center gap-1 shadow backdrop-blur-sm transition-all">
+                          <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                          Open Street View
+                        </a>
+                      </ng-container>
 
-                  <!-- Image Slider fallback -->
-                  <ng-container *ngIf="!p.threeSixtyImageUrl">
-                    <div class="absolute inset-0 bg-gradient-to-br from-slate-800 to-slate-900 flex items-center justify-center">
-                      <div class="text-center text-slate-500">
-                        <svg class="w-10 h-10 mx-auto mb-1.5 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-                        <p class="text-[9px] font-semibold text-slate-500 uppercase tracking-wide">No Street View</p>
-                        <p class="text-[8px] text-slate-600 mt-0.5">Add 360° panorama via Edit</p>
+                      <!-- Image Slider fallback -->
+                      <ng-container *ngIf="!p.threeSixtyImageUrl">
+                        <div class="absolute inset-0 bg-gradient-to-br from-slate-800 to-slate-900 flex items-center justify-center">
+                          <div class="text-center text-slate-500">
+                            <svg class="w-10 h-10 mx-auto mb-1.5 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                            <p class="text-[9px] font-semibold text-slate-500 uppercase tracking-wide">No Street View</p>
+                            <p class="text-[8px] text-slate-600 mt-0.5">Add 360° panorama via Edit</p>
+                          </div>
+                        </div>
+                      </ng-container>
+
+                      <!-- Category pill -->
+                      <div class="absolute top-2.5 right-2.5" *ngIf="!p.threeSixtyImageUrl">
+                        <span class="text-[8px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-full"
+                              [ngClass]="{
+                                'bg-emerald-100 text-emerald-700': p.category === 'AGRICULTURAL',
+                                'bg-blue-100 text-blue-700': p.category === 'RESIDENTIAL',
+                                'bg-amber-100 text-amber-700': p.category === 'COMMERCIAL',
+                                'bg-slate-200 text-slate-700': p.category === 'INDUSTRIAL'
+                              }">
+                          {{ p.category }}
+                        </span>
                       </div>
                     </div>
-                  </ng-container>
 
-                  <!-- Category pill -->
-                  <div class="absolute top-2.5 right-2.5" *ngIf="!p.threeSixtyImageUrl">
-                    <span class="text-[8px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-full"
-                          [ngClass]="{
-                            'bg-emerald-100 text-emerald-700': p.category === 'AGRICULTURAL',
-                            'bg-blue-100 text-blue-700': p.category === 'RESIDENTIAL',
-                            'bg-amber-100 text-amber-700': p.category === 'COMMERCIAL',
-                            'bg-slate-200 text-slate-700': p.category === 'INDUSTRIAL'
-                          }">
-                      {{ p.category }}
-                    </span>
+                    <!-- ── Card Body ── -->
+                    <div class="p-4 flex-1 flex flex-col gap-3">
+                      <div class="flex justify-between items-start gap-2">
+                        <div class="min-w-0">
+                          <h3 class="font-bold text-slate-800 truncate text-sm">{{ p.title }}</h3>
+                          <p class="text-[10px] text-slate-500 truncate mt-0.5">📍 {{ p.village }}, {{ p.district }}</p>
+                        </div>
+                        <app-verification-badge [status]="p.status"></app-verification-badge>
+                      </div>
+
+                      <div class="grid grid-cols-3 gap-2 text-[10px]">
+                        <div class="bg-slate-50 rounded-lg p-2 text-center">
+                          <p class="text-slate-400 font-medium">Area</p>
+                          <p class="font-bold text-slate-700">{{ p.area }} ac</p>
+                        </div>
+                        <div class="bg-emerald-50 rounded-lg p-2 text-center">
+                          <p class="text-emerald-500 font-medium">Price</p>
+                          <p class="font-bold text-emerald-700">₹{{ p.price | number }}</p>
+                        </div>
+                        <div class="bg-slate-50 rounded-lg p-2 text-center">
+                          <p class="text-slate-400 font-medium">Survey</p>
+                          <p class="font-bold text-slate-700 truncate">{{ p.surveyNumber }}</p>
+                        </div>
+                      </div>
+
+                      <!-- Footer row -->
+                      <div class="flex justify-between items-center pt-3 border-t border-slate-100 mt-auto">
+                        <span class="text-[9px] text-slate-400">{{ p.createdAt | date:'mediumDate' }}</span>
+                        <button (click)="$event.stopPropagation(); editProperty(p)" class="text-[10px] px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold rounded-md transition-colors border border-emerald-100 shadow-xs flex items-center gap-1.5">
+                          <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+                          Edit Property
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 </div>
 
-                <!-- ── Card Body ── -->
-                <div class="p-4 flex-1 flex flex-col gap-3">
-                  <div class="flex justify-between items-start gap-2">
-                    <div class="min-w-0">
-                      <h3 class="font-bold text-slate-800 truncate text-sm">{{ p.title }}</h3>
-                      <p class="text-[10px] text-slate-500 truncate mt-0.5">📍 {{ p.village }}, {{ p.district }}</p>
-                    </div>
-                    <app-verification-badge [status]="p.status"></app-verification-badge>
-                  </div>
+                <!-- Empty State -->
+                <div *ngIf="myProperties.length === 0" class="bg-white rounded-2xl shadow-xs border border-slate-100 p-12 text-center">
+                  <svg class="w-16 h-16 text-slate-300 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                  </svg>
+                  <h3 class="text-lg font-bold text-slate-700">No properties cataloged</h3>
+                  <p class="text-sm text-slate-500 mt-2 max-w-sm mx-auto">Upload your first agricultural, residential or commercial plot to trigger automated AI Trust score verification.</p>
+                  <button (click)="openAddPropertyForm()" class="mt-6 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-sm rounded-xl transition-all shadow-md">
+                    Add Property
+                  </button>
+                </div>
 
-                  <div class="grid grid-cols-3 gap-2 text-[10px]">
-                    <div class="bg-slate-50 rounded-lg p-2 text-center">
-                      <p class="text-slate-400 font-medium">Area</p>
-                      <p class="font-bold text-slate-700">{{ p.area }} ac</p>
-                    </div>
-                    <div class="bg-emerald-50 rounded-lg p-2 text-center">
-                      <p class="text-emerald-500 font-medium">Price</p>
-                      <p class="font-bold text-emerald-700">₹{{ p.price | number }}</p>
-                    </div>
-                    <div class="bg-slate-50 rounded-lg p-2 text-center">
-                      <p class="text-slate-400 font-medium">Survey</p>
-                      <p class="font-bold text-slate-700 truncate">{{ p.surveyNumber }}</p>
-                    </div>
-                  </div>
+                <!-- Empty State for active filter tab (when they have cataloged properties but none match the current filter status) -->
+                <div *ngIf="myProperties.length > 0 && filteredProperties.length === 0" class="bg-white rounded-2xl shadow-xs border border-slate-100 p-12 text-center">
+                  <svg class="w-12 h-12 text-slate-300 mx-auto mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  <h4 class="font-bold text-slate-700 text-sm">No properties in this category</h4>
+                  <p class="text-xs text-slate-500 mt-1">You currently have no properties matching the selected status filter.</p>
+                </div>
+              </div> <!-- End Left side -->
 
-                  <!-- Footer row -->
-                  <div class="flex justify-between items-center pt-3 border-t border-slate-100 mt-auto">
-                    <span class="text-[9px] text-slate-400">{{ p.createdAt | date:'mediumDate' }}</span>
-                    <button (click)="$event.stopPropagation(); editProperty(p)" class="text-[10px] px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold rounded-md transition-colors border border-emerald-100 shadow-xs flex items-center gap-1.5">
+              <!-- Right side: DETAIL MANAGEMENT PANEL (takes 30% if open) -->
+              <div *ngIf="selectedProperty() as p" class="w-full lg:w-[30%] lg:max-w-[30%] bg-white rounded-2xl shadow-md border border-slate-100 p-6 space-y-6 lg:sticky lg:top-6 transition-all duration-500 ease-in-out shrink-0">
+                <div class="flex justify-between items-start border-b border-slate-100 pb-4">
+                  <div>
+                    <h3 class="text-sm font-bold text-slate-800">Detail Management</h3>
+                    <p class="text-[10px] text-slate-500 mt-0.5 truncate max-w-[200px]" [title]="p.title">{{ p.title }}</p>
+                  </div>
+                  <div class="flex gap-2">
+                    <button (click)="editProperty(p)" class="text-[10px] px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-lg flex items-center gap-1 transition-colors border border-slate-200">
                       <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
-                      Edit Property
+                      Edit
+                    </button>
+                    <button (click)="selectedProperty.set(null)" class="text-slate-400 hover:text-slate-600">
+                      <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
                     </button>
                   </div>
                 </div>
-              </div>
-            </div>
 
-            <!-- Empty State -->
-            <div *ngIf="myProperties.length === 0" class="bg-white rounded-2xl shadow-xs border border-slate-100 p-12 text-center">
-              <svg class="w-16 h-16 text-slate-300 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-              </svg>
-              <h3 class="text-lg font-bold text-slate-700">No properties cataloged</h3>
-              <p class="text-sm text-slate-500 mt-2 max-w-sm mx-auto">Upload your first agricultural, residential or commercial plot to trigger automated AI Trust score verification.</p>
-              <button (click)="openAddPropertyForm()" class="mt-6 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-sm rounded-xl transition-all shadow-md">
-                Add Property
-              </button>
-            </div>
-
-            <!-- Empty State for active filter tab (when they have cataloged properties but none match the current filter status) -->
-            <div *ngIf="myProperties.length > 0 && filteredProperties.length === 0" class="bg-white rounded-2xl shadow-xs border border-slate-100 p-12 text-center">
-              <svg class="w-12 h-12 text-slate-300 mx-auto mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
-              <h4 class="font-bold text-slate-700 text-sm">No properties in this category</h4>
-              <p class="text-xs text-slate-500 mt-1">You currently have no properties matching the selected status filter.</p>
-            </div>
-
-            <!-- DETAIL MANAGEMENT PANEL -->
-            <div *ngIf="selectedProperty() as p" class="bg-white rounded-2xl shadow-md border border-slate-100 p-6 space-y-6">
-              <div class="flex justify-between items-start border-b border-slate-100 pb-4">
-                <div>
-                  <h3 class="text-lg font-bold text-slate-800">Detail Management: {{ p.title }}</h3>
-                  <p class="text-xs text-slate-500">Upload media attachments, legal documents, review timelines, and execute checks.</p>
-                </div>
-                <div class="flex gap-2">
-                  <button (click)="editProperty(p)" class="text-xs px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-lg flex items-center gap-1 transition-colors border border-slate-200">
-                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
-                    Edit Details
+                <!-- Detail Tabs -->
+                <div class="flex border-b border-slate-100 overflow-x-auto whitespace-nowrap scrollbar-none gap-2 pb-0.5">
+                  <button 
+                    (click)="detailSubTab = 'verify'"
+                    [class.border-emerald-500]="detailSubTab === 'verify'"
+                    [class.text-emerald-600]="detailSubTab === 'verify'"
+                    class="shrink-0 px-2 py-1.5 border-b-2 border-transparent font-semibold text-[11px] text-slate-500 hover:text-slate-800 transition-all">
+                    AI Check
                   </button>
-                  <button (click)="selectedProperty.set(null)" class="text-slate-400 hover:text-slate-600">
-                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                  <button 
+                    (click)="detailSubTab = 'media'"
+                    [class.border-emerald-500]="detailSubTab === 'media'"
+                    [class.text-emerald-600]="detailSubTab === 'media'"
+                    class="shrink-0 px-2 py-1.5 border-b-2 border-transparent font-semibold text-[11px] text-slate-500 hover:text-slate-800 transition-all">
+                    Media
+                  </button>
+                  <button 
+                    (click)="detailSubTab = 'docs'"
+                    [class.border-emerald-500]="detailSubTab === 'docs'"
+                    [class.text-emerald-600]="detailSubTab === 'docs'"
+                    class="shrink-0 px-2 py-1.5 border-b-2 border-transparent font-semibold text-[11px] text-slate-500 hover:text-slate-800 transition-all">
+                    Documents
+                  </button>
+                  <button 
+                    (click)="detailSubTab = 'timeline'"
+                    [class.border-emerald-500]="detailSubTab === 'timeline'"
+                    [class.text-emerald-600]="detailSubTab === 'timeline'"
+                    class="shrink-0 px-2 py-1.5 border-b-2 border-transparent font-semibold text-[11px] text-slate-500 hover:text-slate-800 transition-all">
+                    History
                   </button>
                 </div>
-              </div>
 
-              <!-- Detail Tabs -->
-              <div class="flex border-b border-slate-100">
-                <button 
-                  (click)="detailSubTab = 'verify'"
-                  [class.border-emerald-500]="detailSubTab === 'verify'"
-                  [class.text-emerald-600]="detailSubTab === 'verify'"
-                  class="px-4 py-2 border-b-2 border-transparent font-semibold text-xs text-slate-500 hover:text-slate-800 transition-all">
-                  Verification & AI Check
-                </button>
-                <button 
-                  (click)="detailSubTab = 'media'"
-                  [class.border-emerald-500]="detailSubTab === 'media'"
-                  [class.text-emerald-600]="detailSubTab === 'media'"
-                  class="px-4 py-2 border-b-2 border-transparent font-semibold text-xs text-slate-500 hover:text-slate-800 transition-all">
-                  Upload Media
-                </button>
-                <button 
-                  (click)="detailSubTab = 'docs'"
-                  [class.border-emerald-500]="detailSubTab === 'docs'"
-                  [class.text-emerald-600]="detailSubTab === 'docs'"
-                  class="px-4 py-2 border-b-2 border-transparent font-semibold text-xs text-slate-500 hover:text-slate-800 transition-all">
-                  Documents (OCR passbook)
-                </button>
-                <button 
-                  (click)="detailSubTab = 'timeline'"
-                  [class.border-emerald-500]="detailSubTab === 'timeline'"
-                  [class.text-emerald-600]="detailSubTab === 'timeline'"
-                  class="px-4 py-2 border-b-2 border-transparent font-semibold text-xs text-slate-500 hover:text-slate-800 transition-all">
-                  Audit History
-                </button>
-              </div>
-
-              <!-- SUBTAB: VERIFICATION -->
-              <div *ngIf="detailSubTab === 'verify'" class="space-y-6">
-                <!-- AI check panel -->
-                <div class="p-5 rounded-xl border border-slate-200" [ngClass]="aiReport ? 'bg-slate-50/50' : 'bg-amber-50/20 border-amber-200'">
-                  <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                    <div>
-                      <h4 class="font-bold text-slate-800 text-sm">Automated AI verification engine</h4>
-                      <p class="text-xs text-slate-500 mt-1">Runs forgery verification, duplication checks, and cross-references passbook name with listing.</p>
-                    </div>
-                    <button 
-                      *ngIf="!aiReport"
-                      (click)="runAiVerify(p.id)"
-                      [disabled]="aiLoading"
-                      class="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs rounded-xl shadow-xs transition-all disabled:opacity-50 flex items-center gap-1.5">
-                      <span *ngIf="aiLoading" class="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
-                      Run Trust Audit
-                    </button>
-                  </div>
-
-                  <!-- AI REPORT DISPLAY -->
-                  <div *ngIf="aiReport" class="mt-5 grid grid-cols-2 md:grid-cols-5 gap-4 pt-5 border-t border-slate-200">
-                    <div class="bg-white p-3 rounded-xl border border-slate-100 text-center shadow-xs">
-                      <p class="text-[10px] uppercase font-bold text-slate-400">AI Trust Score</p>
-                      <p class="text-xl font-extrabold text-emerald-600 mt-1">{{ aiReport.aiTrustScore }}%</p>
-                    </div>
-                    <div class="bg-white p-3 rounded-xl border border-slate-100 text-center shadow-xs">
-                      <p class="text-[10px] uppercase font-bold text-slate-400">Forgery Risk</p>
-                      <p class="text-xl font-extrabold text-rose-500 mt-1">{{ aiReport.forgeryScore }}%</p>
-                    </div>
-                    <div class="bg-white p-3 rounded-xl border border-slate-100 text-center shadow-xs">
-                      <p class="text-[10px] uppercase font-bold text-slate-400">Overlap Score</p>
-                      <p class="text-xl font-extrabold mt-1" [ngClass]="aiReport.duplicateScore > 10 ? 'text-rose-500' : 'text-slate-700'">{{ aiReport.duplicateScore }}%</p>
-                    </div>
-                    <div class="bg-white p-3 rounded-xl border border-slate-100 text-center shadow-xs">
-                      <p class="text-[10px] uppercase font-bold text-slate-400">Owner Match</p>
-                      <p class="text-sm font-extrabold mt-2" [ngClass]="aiReport.ownershipMatch ? 'text-emerald-600' : 'text-rose-500'">
-                        {{ aiReport.ownershipMatch ? 'MATCHED' : 'MISMATCH' }}
-                      </p>
-                    </div>
-                    <div class="bg-white p-3 rounded-xl border border-slate-100 text-center shadow-xs">
-                      <p class="text-[10px] uppercase font-bold text-slate-400">Confidence</p>
-                      <p class="text-xl font-extrabold text-slate-700 mt-1">{{ aiReport.confidence }}%</p>
-                    </div>
-                    <div class="col-span-2 md:col-span-5 bg-white p-4 rounded-xl border border-slate-100 mt-2">
-                      <p class="text-xs font-bold text-slate-700 mb-1">AI Trust Summary:</p>
-                      <p class="text-xs text-slate-600 leading-relaxed">{{ aiReport.summary }}</p>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- Govt inspection comments -->
-                <div class="bg-slate-50/50 p-5 rounded-xl border border-slate-200">
-                  <h4 class="font-bold text-slate-800 text-sm mb-3">Government Verification Status</h4>
-                  <div *ngIf="govtVerification; else noGovt">
-                    <div class="flex items-center gap-3 mb-2">
-                      <span class="px-2.5 py-1 text-[10px] font-bold rounded-full uppercase" 
-                            [ngClass]="govtVerification.status === 'APPROVED' ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'">
-                        {{ govtVerification.status }}
-                      </span>
-                      <span class="text-slate-400 text-xs">Inspected on {{ govtVerification.verifiedDate | date:'medium' }}</span>
-                    </div>
-                    <p class="text-xs text-slate-600 bg-white p-3.5 rounded-lg border border-slate-100">{{ govtVerification.remarks }}</p>
-                  </div>
-                  <ng-template #noGovt>
-                    <p class="text-xs text-slate-500 leading-relaxed">No government review has been submitted for this property yet. Standard workflow requires completing the AI Trust engine check first. The status will update to PENDING_GOVT once AI analysis concludes, alerting the regional inspector.</p>
-                  </ng-template>
-                </div>
-              </div>
-
-              <!-- SUBTAB: MEDIA UPLOAD -->
-              <div *ngIf="detailSubTab === 'media'" class="space-y-6">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  
-                  <!-- Upload Image Card -->
-                  <div class="p-5 bg-slate-50/40 rounded-xl border border-slate-200 space-y-4">
-                    <div>
-                      <h4 class="font-bold text-slate-800 text-xs">Add photos/images</h4>
-                      <p class="text-[10px] text-slate-500 mt-0.5">Supports high-res JPG and PNG formats (max 10MB).</p>
-                    </div>
-
-                    <div class="relative border-2 border-dashed border-slate-300 rounded-xl p-6 text-center hover:border-emerald-500 transition-colors bg-white">
-                      <input type="file" (change)="onUploadImage($event, p.id)" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" accept="image/*" />
-                      <div class="text-slate-500 space-y-2">
-                        <svg class="w-8 h-8 mx-auto text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-                        <p class="text-xs font-semibold text-slate-700">Click or drag image file</p>
+                <!-- SUBTAB: VERIFICATION -->
+                <div *ngIf="detailSubTab === 'verify'" class="space-y-6">
+                  <!-- AI check panel -->
+                  <div class="p-4.5 rounded-xl border border-slate-200 bg-slate-50/50" [ngClass]="aiReport ? '' : 'bg-amber-50/20 border-amber-200'">
+                    <div class="flex flex-col gap-3">
+                      <div>
+                        <h4 class="font-bold text-slate-800 text-xs">AI verification engine</h4>
+                        <p class="text-[10px] text-slate-500 mt-0.5">Runs forgery checks and name verification.</p>
                       </div>
-                    </div>
-
-                    <div *ngIf="uploadLoading" class="text-xs text-emerald-600 flex items-center gap-1.5">
-                      <span class="w-3.5 h-3.5 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin"></span>
-                      Uploading asset to Cloudinary...
-                    </div>
-
-                    <!-- Listed images -->
-                    <div class="grid grid-cols-4 gap-3 pt-4 border-t border-slate-100" *ngIf="propertyImages.length > 0">
-                      <div *ngFor="let img of propertyImages" class="relative group aspect-square rounded-lg overflow-hidden border border-slate-200 shadow-xs">
-                        <img [src]="img.thumbnailUrl" class="w-full h-full object-cover" />
-                      </div>
-                    </div>
-                  </div>
-
-                  <!-- Upload Walkthrough Video -->
-                  <div class="p-5 bg-slate-50/40 rounded-xl border border-slate-200 space-y-4">
-                    <div>
-                      <h4 class="font-bold text-slate-800 text-xs">Add walkthrough video</h4>
-                      <p class="text-[10px] text-slate-500 mt-0.5">Attach a high-resolution walkthrough MP4 (max 50MB).</p>
-                    </div>
-
-                    <div class="relative border-2 border-dashed border-slate-300 rounded-xl p-6 text-center hover:border-emerald-500 transition-colors bg-white">
-                      <input type="file" (change)="onUploadVideo($event, p.id)" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" accept="video/*" />
-                      <div class="text-slate-500 space-y-2">
-                        <svg class="w-8 h-8 mx-auto text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
-                        <p class="text-xs font-semibold text-slate-700">Click or drag video file</p>
-                      </div>
-                    </div>
-
-                    <!-- Listed video -->
-                    <div class="p-3 bg-white border border-slate-200 rounded-xl flex items-center justify-between text-xs" *ngIf="propertyVideos.length > 0">
-                      <span class="text-slate-600 truncate max-w-[200px]">{{ propertyVideos[0].videoUrl }}</span>
-                      <span class="text-slate-400 font-medium">Walkthrough upload active</span>
-                    </div>
-                  </div>
-
-                </div>
-              </div>
-
-              <!-- SUBTAB: DOCUMENTS -->
-              <div *ngIf="detailSubTab === 'docs'" class="space-y-6">
-                <div class="p-5 bg-slate-50/40 rounded-xl border border-slate-200 space-y-5">
-                  <div class="flex justify-between items-start">
-                    <div>
-                      <h4 class="font-bold text-slate-800 text-sm">Land Registry / Patta Passbooks</h4>
-                      <p class="text-xs text-slate-500 mt-1">Upload ownership document deeds. PDF or images accepted. OCR handles name/survey check.</p>
-                    </div>
-                  </div>
-
-                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label class="block text-slate-700 text-xs font-semibold mb-1.5">Document Type</label>
-                      <select [(ngModel)]="selectedDocType" class="w-full bg-white border border-slate-300 rounded-xl py-2 px-3 focus:outline-hidden focus:border-emerald-500 text-xs">
-                        <option value="PATTA">Patta Passbook</option>
-                        <option value="SALE_DEED">Sale Deed</option>
-                        <option value="SURVEY_MAP">Survey Map</option>
-                        <option value="TAX_RECEIPT">Tax Receipt</option>
-                      </select>
-                    </div>
-
-                    <div>
-                      <label class="block text-slate-700 text-xs font-semibold mb-1.5">Select Document File</label>
-                      <div class="relative">
-                        <input type="file" (change)="onUploadDoc($event, p.id)" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" accept=".pdf,image/*" />
-                        <div class="w-full bg-white border border-slate-300 rounded-xl py-2 px-4 text-xs font-medium text-slate-600 text-center hover:bg-slate-50 hover:border-emerald-500 transition-colors">
-                          Click to Choose PDF / Image
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <!-- Uploading Spinner -->
-                  <div *ngIf="docLoading" class="text-xs text-emerald-600 flex items-center gap-1.5">
-                    <span class="w-3.5 h-3.5 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin"></span>
-                    Uploading PDF passbook to Cloudinary secure vault...
-                  </div>
-
-                  <!-- Documents list with OCR trigger buttons -->
-                  <div class="space-y-3 pt-4 border-t border-slate-100" *ngIf="propertyDocs.length > 0">
-                    <h5 class="text-xs font-bold text-slate-700">Uploaded Deeds:</h5>
-                    <div *ngFor="let doc of propertyDocs" class="bg-white p-4 rounded-xl border border-slate-200 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 shadow-xs">
-                      <div class="space-y-1">
-                        <div class="flex items-center gap-2">
-                          <span class="font-bold text-slate-800 text-xs">{{ doc.documentType }}</span>
-                          <a [href]="doc.fileUrl" target="_blank" class="text-[10px] text-emerald-600 hover:underline">View Document File</a>
-                        </div>
-                        <p class="text-[10px] text-slate-500">OCR: {{ doc.ocrStatus }} | Verification: {{ doc.verificationStatus }}</p>
-                      </div>
-
-                      <!-- OCR Trigger Button -->
                       <button 
-                        *ngIf="doc.ocrStatus === 'PENDING'"
-                        (click)="triggerOcr(doc.id)"
-                        class="px-3.5 py-1.5 bg-slate-900 hover:bg-slate-800 text-white font-bold text-[10px] rounded-lg transition">
-                        Execute OCR Parse
+                        *ngIf="!aiReport"
+                        (click)="runAiVerify(p.id)"
+                        [disabled]="aiLoading"
+                        class="w-full px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs rounded-xl shadow-xs transition-all disabled:opacity-50 flex items-center justify-center gap-1.5">
+                        <span *ngIf="aiLoading" class="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                        Run Trust Audit
                       </button>
+                    </div>
 
-                      <div *ngIf="doc.ocrStatus === 'COMPLETED' && doc.rawText" class="w-full md:w-2/3 bg-slate-50 p-2.5 rounded-lg border border-slate-100 text-[10px] text-slate-600 font-mono overflow-auto max-h-24">
-                        <strong>Extracted Text:</strong> {{ doc.rawText }}
+                    <!-- AI REPORT DISPLAY -->
+                    <div *ngIf="aiReport" class="mt-4 grid grid-cols-2 gap-3 pt-4 border-t border-slate-200">
+                      <div class="bg-white p-2.5 rounded-xl border border-slate-100 text-center shadow-xs">
+                        <p class="text-[9px] uppercase font-bold text-slate-400">AI Trust</p>
+                        <p class="text-lg font-extrabold text-emerald-600 mt-1">{{ aiReport.aiTrustScore }}%</p>
+                      </div>
+                      <div class="bg-white p-2.5 rounded-xl border border-slate-100 text-center shadow-xs">
+                        <p class="text-[9px] uppercase font-bold text-slate-400">Forgery</p>
+                        <p class="text-lg font-extrabold text-rose-500 mt-1">{{ aiReport.forgeryScore }}%</p>
+                      </div>
+                      <div class="bg-white p-2.5 rounded-xl border border-slate-100 text-center shadow-xs">
+                        <p class="text-[9px] uppercase font-bold text-slate-400">Overlap</p>
+                        <p class="text-lg font-extrabold mt-1" [ngClass]="aiReport.duplicateScore > 10 ? 'text-rose-500' : 'text-slate-700'">{{ aiReport.duplicateScore }}%</p>
+                      </div>
+                      <div class="bg-white p-2.5 rounded-xl border border-slate-100 text-center shadow-xs">
+                        <p class="text-[9px] uppercase font-bold text-slate-400">Confidence</p>
+                        <p class="text-lg font-extrabold text-slate-700 mt-1">{{ aiReport.confidence }}%</p>
+                      </div>
+                      <div class="col-span-2 bg-white p-3 rounded-xl border border-slate-100 text-center shadow-xs">
+                        <p class="text-[9px] uppercase font-bold text-slate-400">Owner Match</p>
+                        <p class="text-xs font-extrabold mt-1" [ngClass]="aiReport.ownershipMatch ? 'text-emerald-600' : 'text-rose-500'">
+                          {{ aiReport.ownershipMatch ? 'MATCHED' : 'MISMATCH' }}
+                        </p>
+                      </div>
+                      <div class="col-span-2 bg-white p-3.5 rounded-xl border border-slate-100 mt-1">
+                        <p class="text-[11px] font-bold text-slate-700 mb-0.5">AI Trust Summary:</p>
+                        <p class="text-[11px] text-slate-600 leading-relaxed text-left">{{ aiReport.summary }}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Govt inspection comments -->
+                  <div class="bg-slate-50/50 p-4.5 rounded-xl border border-slate-200">
+                    <h4 class="font-bold text-slate-800 text-xs mb-2">Govt verification</h4>
+                    <div *ngIf="govtVerification; else noGovt">
+                      <div class="flex items-center gap-2 mb-2">
+                        <span class="px-2 py-0.5 text-[9px] font-bold rounded-full uppercase" 
+                              [ngClass]="govtVerification.status === 'APPROVED' ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'">
+                          {{ govtVerification.status }}
+                        </span>
+                        <span class="text-slate-400 text-[10px]">Inspected {{ govtVerification.verifiedDate | date:'shortDate' }}</span>
+                      </div>
+                      <p class="text-[11px] text-slate-600 bg-white p-3 rounded-lg border border-slate-100">{{ govtVerification.remarks }}</p>
+                    </div>
+                    <ng-template #noGovt>
+                      <p class="text-[10px] text-slate-500 leading-relaxed">No government review has been submitted for this property yet. Completing AI Trust check first triggers this status queue.</p>
+                    </ng-template>
+                  </div>
+                </div>
+
+                <!-- SUBTAB: MEDIA UPLOAD -->
+                <div *ngIf="detailSubTab === 'media'" class="space-y-6">
+                  <div class="flex flex-col gap-6">
+                    
+                    <!-- Upload Image Card -->
+                    <div class="p-4.5 bg-slate-50/40 rounded-xl border border-slate-200 space-y-4">
+                      <div>
+                        <h4 class="font-bold text-slate-800 text-xs">Add photos/images</h4>
+                        <p class="text-[10px] text-slate-500 mt-0.5">JPG and PNG formats (max 10MB).</p>
+                      </div>
+
+                      <div class="relative border-2 border-dashed border-slate-300 rounded-xl p-5 text-center hover:border-emerald-500 transition-colors bg-white">
+                        <input type="file" (change)="onUploadImage($event, p.id)" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" accept="image/*" />
+                        <div class="text-slate-500 space-y-2">
+                          <svg class="w-7 h-7 mx-auto text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                          <p class="text-[11px] font-semibold text-slate-700">Choose image file</p>
+                        </div>
+                      </div>
+
+                      <div *ngIf="uploadLoading" class="text-[11px] text-emerald-600 flex items-center gap-1.5">
+                        <span class="w-3 h-3 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin"></span>
+                        Uploading to Cloudinary...
+                      </div>
+
+                      <!-- Listed images -->
+                      <div class="grid grid-cols-3 gap-2 pt-4 border-t border-slate-100" *ngIf="propertyImages.length > 0">
+                        <div *ngFor="let img of propertyImages" class="relative group aspect-square rounded-lg overflow-hidden border border-slate-200 shadow-xs">
+                          <img [src]="img.thumbnailUrl" class="w-full h-full object-cover" />
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- Upload Walkthrough Video -->
+                    <div class="p-4.5 bg-slate-50/40 rounded-xl border border-slate-200 space-y-4">
+                      <div>
+                        <h4 class="font-bold text-slate-800 text-xs">Add walkthrough video</h4>
+                        <p class="text-[10px] text-slate-500 mt-0.5">Walkthrough MP4 video (max 50MB).</p>
+                      </div>
+
+                      <div class="relative border-2 border-dashed border-slate-300 rounded-xl p-5 text-center hover:border-emerald-500 transition-colors bg-white">
+                        <input type="file" (change)="onUploadVideo($event, p.id)" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" accept="video/*" />
+                        <div class="text-slate-500 space-y-2">
+                          <svg class="w-7 h-7 mx-auto text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
+                          <p class="text-[11px] font-semibold text-slate-700">Choose video file</p>
+                        </div>
+                      </div>
+
+                      <!-- Listed video -->
+                      <div class="p-3 bg-white border border-slate-200 rounded-xl flex items-center justify-between text-xs" *ngIf="propertyVideos.length > 0">
+                        <span class="text-slate-600 truncate max-w-[100px]">{{ propertyVideos[0].videoUrl }}</span>
+                        <span class="text-slate-400 font-medium text-[10px]">Active</span>
                       </div>
                     </div>
                   </div>
                 </div>
-              </div>
 
-              <!-- SUBTAB: AUDIT TIMELINE -->
-              <div *ngIf="detailSubTab === 'timeline'" class="space-y-6">
-                <div class="relative pl-6 border-l-2 border-slate-200 space-y-6">
-                  <div *ngFor="let t of timeline" class="relative">
-                    <!-- timeline dot -->
-                    <span class="absolute -left-[31px] top-1 bg-emerald-500 border-4 border-white w-4.5 h-4.5 rounded-full shadow-xs"></span>
-                    <p class="text-xs font-bold text-slate-700">{{ t.action }}</p>
-                    <p class="text-[10px] text-slate-400 mt-0.5">{{ t.timestamp | date:'medium' }}</p>
-                    <p class="text-xs text-slate-500 mt-1 leading-relaxed bg-slate-50 p-2.5 rounded-lg border border-slate-100/50" *ngIf="t.remarks">{{ t.remarks }}</p>
+                <!-- SUBTAB: DOCUMENTS -->
+                <div *ngIf="detailSubTab === 'docs'" class="space-y-6">
+                  <div class="p-4.5 bg-slate-50/40 rounded-xl border border-slate-200 space-y-5">
+                    <div class="flex justify-between items-start">
+                      <div>
+                        <h4 class="font-bold text-slate-800 text-xs">Land Registry / Patta Passbooks</h4>
+                        <p class="text-[10px] text-slate-500 mt-1">Upload deeds (PDF/image). OCR name check.</p>
+                      </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 gap-4">
+                      <div>
+                        <label class="block text-slate-700 text-[10px] font-semibold mb-1">Document Type</label>
+                        <select [(ngModel)]="selectedDocType" class="w-full bg-white border border-slate-300 rounded-xl py-1.5 px-2 focus:outline-hidden focus:border-emerald-500 text-xs">
+                          <option value="PATTA">Patta Passbook</option>
+                          <option value="SALE_DEED">Sale Deed</option>
+                          <option value="SURVEY_MAP">Survey Map</option>
+                          <option value="TAX_RECEIPT">Tax Receipt</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label class="block text-slate-700 text-[10px] font-semibold mb-1">Select File</label>
+                        <div class="relative">
+                          <input type="file" (change)="onUploadDoc($event, p.id)" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" accept=".pdf,image/*" />
+                          <div class="w-full bg-white border border-slate-300 rounded-xl py-1.5 px-3 text-xs font-medium text-slate-600 text-center hover:bg-slate-50 hover:border-emerald-500 transition-colors">
+                            Choose PDF / Image
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- Uploading Spinner -->
+                    <div *ngIf="docLoading" class="text-xs text-emerald-600 flex items-center gap-1.5">
+                      <span class="w-3 h-3 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin"></span>
+                      Uploading secure PDF...
+                    </div>
+
+                    <!-- Documents list with OCR trigger buttons -->
+                    <div class="space-y-3 pt-4 border-t border-slate-100" *ngIf="propertyDocs.length > 0">
+                      <h5 class="text-[11px] font-bold text-slate-700">Uploaded Deeds:</h5>
+                      <div *ngFor="let doc of propertyDocs" class="bg-white p-3 rounded-xl border border-slate-200 flex flex-col gap-3 shadow-xs">
+                        <div class="space-y-0.5">
+                          <div class="flex items-center gap-1.5">
+                            <span class="font-bold text-slate-800 text-xs">{{ doc.documentType }}</span>
+                            <a [href]="doc.fileUrl" target="_blank" class="text-[10px] text-emerald-600 hover:underline flex items-center gap-0.5">
+                              <span>View</span>
+                              <svg class="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                            </a>
+                          </div>
+                          <p class="text-[9px] text-slate-500">OCR: {{ doc.ocrStatus }} | Docs: {{ doc.verificationStatus }}</p>
+                        </div>
+
+                        <!-- OCR Trigger Button -->
+                        <button 
+                          *ngIf="doc.ocrStatus === 'PENDING'"
+                          (click)="triggerOcr(doc.id)"
+                          class="w-full px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white font-bold text-[10px] rounded-lg transition">
+                          Execute OCR Parse
+                        </button>
+
+                        <div *ngIf="doc.ocrStatus === 'COMPLETED' && doc.rawText" class="w-full bg-slate-50 p-2 rounded-lg border border-slate-100 text-[10px] text-slate-600 font-mono overflow-auto max-h-24">
+                          <strong>Extracted:</strong> {{ doc.rawText }}
+                        </div>
+                      </div>
+                    </div>
                   </div>
-
-                  <div *ngIf="timeline.length === 0" class="text-slate-400 text-xs py-4 text-center">No timeline transitions logged yet.</div>
                 </div>
-              </div>
-            </div>
+
+                <!-- SUBTAB: AUDIT TIMELINE -->
+                <div *ngIf="detailSubTab === 'timeline'" class="space-y-6">
+                  <div class="relative pl-5 border-l-2 border-slate-200 space-y-5">
+                    <div *ngFor="let t of timeline" class="relative">
+                      <!-- timeline dot -->
+                      <span class="absolute -left-[27px] top-1 bg-emerald-500 border-4 border-white w-4.5 h-4.5 rounded-full shadow-xs"></span>
+                      <p class="text-[11px] font-bold text-slate-700">{{ t.action }}</p>
+                      <p class="text-[9px] text-slate-400 mt-0.5">{{ t.timestamp | date:'short' }}</p>
+                      <p class="text-[11px] text-slate-500 mt-1 leading-relaxed bg-slate-50 p-2 rounded-lg border border-slate-100/50" *ngIf="t.remarks">{{ t.remarks }}</p>
+                    </div>
+
+                    <div *ngIf="timeline.length === 0" class="text-slate-400 text-xs py-4 text-center">No timeline transitions logged yet.</div>
+                  </div>
+                </div>
+              </div> <!-- End Right side -->
+
+            </div> <!-- End Side-by-side flex container -->
           </div>
 
           <!-- TAB 2: ADD PROPERTY FORM -->
