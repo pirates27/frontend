@@ -177,7 +177,9 @@ export class MapComponent implements AfterViewInit, OnChanges, OnDestroy {
           }
 
           // Redraw custom boundaries and markers when map style loaded/reloaded
-          if (this.boundaryPoints.length >= 2) {
+          if (this.initialBoundary && this.initialBoundary.length > 0 && this.boundaryPoints.length === 0) {
+            this.loadInitialBoundaryPoints(this.initialBoundary);
+          } else if (this.boundaryPoints.length >= 2) {
             this.drawPolygon();
           }
 
@@ -244,7 +246,6 @@ export class MapComponent implements AfterViewInit, OnChanges, OnDestroy {
 
   setDrawMode(mode: 'pin' | 'draw'): void {
     this.drawMode = mode;
-    this.clearBoundary();
     
     if (mode === 'pin') {
       if (this.pickerMarker) {
@@ -252,10 +253,12 @@ export class MapComponent implements AfterViewInit, OnChanges, OnDestroy {
       } else {
         this.setupPickerMode();
       }
+      this.boundaryMarkers.forEach(m => m.remove());
     } else {
       if (this.pickerMarker) {
         this.pickerMarker.remove();
       }
+      this.boundaryMarkers.forEach(m => m.addTo(this.map));
     }
   }
 
@@ -296,6 +299,13 @@ export class MapComponent implements AfterViewInit, OnChanges, OnDestroy {
         this.handleReverseGeocode(lng, lat);
       });
     };
+
+    // If we have an existing boundary, initialize the marker at its center instead of geolocating!
+    if (this.boundaryPoints.length > 0) {
+      const center = this.calculateCentroid(this.boundaryPoints);
+      initMarkerAt(center[0], center[1]);
+      return;
+    }
 
     // Try to get user's real location and fly there
     if (navigator.geolocation) {
@@ -519,7 +529,7 @@ export class MapComponent implements AfterViewInit, OnChanges, OnDestroy {
     return Number(acres.toFixed(2));
   }
 
-  clearBoundary(): void {
+  clearBoundary(emitEvent = false): void {
     this.boundaryPoints = [];
     this.boundaryMarkers.forEach(m => m.remove());
     this.boundaryMarkers = [];
@@ -542,6 +552,21 @@ export class MapComponent implements AfterViewInit, OnChanges, OnDestroy {
         this.map.removeSource(lineSourceId);
       }
     }
+
+    if (emitEvent) {
+      const lat = this.pickerMarker ? this.pickerMarker.getLngLat().lat : this.pickerLat;
+      const lng = this.pickerMarker ? this.pickerMarker.getLngLat().lng : this.pickerLng;
+      this.locationSelected.emit({
+        lat,
+        lng,
+        address: '',
+        village: '',
+        district: '',
+        state: '',
+        pincode: '',
+        boundary: []
+      });
+    }
   }
 
   private handleReverseGeocode(lng: number, lat: number): void {
@@ -554,7 +579,8 @@ export class MapComponent implements AfterViewInit, OnChanges, OnDestroy {
           village: details.village || '',
           district: details.district || '',
           state: details.state || '',
-          pincode: details.pincode || ''
+          pincode: details.pincode || '',
+          boundary: this.boundaryPoints.length > 0 ? [...this.boundaryPoints] : undefined
         });
       },
       error: () => {
@@ -565,7 +591,8 @@ export class MapComponent implements AfterViewInit, OnChanges, OnDestroy {
           village: '',
           district: '',
           state: '',
-          pincode: ''
+          pincode: '',
+          boundary: this.boundaryPoints.length > 0 ? [...this.boundaryPoints] : undefined
         });
       }
     });

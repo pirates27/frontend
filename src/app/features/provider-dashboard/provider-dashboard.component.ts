@@ -976,7 +976,9 @@ export class ProviderDashboardComponent implements OnInit {
       pincode: e.pincode || this.propertyForm.value.pincode,
       area: e.area > 0 ? e.area : this.propertyForm.value.area
     });
-    this.lastDrawnBoundary = e.boundary || [];
+    if (e.boundary !== undefined) {
+      this.lastDrawnBoundary = e.boundary || [];
+    }
   }
 
   // Upload Property Photo
