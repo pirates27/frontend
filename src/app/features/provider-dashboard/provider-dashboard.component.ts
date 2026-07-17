@@ -703,10 +703,34 @@ import canvasConfetti from 'canvas-confetti';
                     </div>
                   </div>
 
+                  <!-- Legal Document Upload (Required on Add) -->
+                  <div class="space-y-1.5" *ngIf="!isEditMode">
+                    <label class="block text-slate-700 text-xs font-semibold">
+                      Land Document / Patta Passbook (PDF/Image) <span class="text-rose-500 font-bold">*</span>
+                    </label>
+                    <div class="relative border-2 border-dashed border-slate-300 rounded-xl p-4 text-center hover:border-emerald-500 hover:bg-emerald-50/10 transition-colors">
+                      <input 
+                        type="file" 
+                        (change)="onAddPropertyFileSelected($event)" 
+                        class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" 
+                        accept=".pdf,image/*" 
+                      />
+                      <div class="flex flex-col items-center gap-1.5">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                        </svg>
+                        <span class="text-xs text-slate-600 font-medium">
+                          {{ selectedAddPropertyDocFile ? selectedAddPropertyDocFile.name : 'Choose a file or drag it here' }}
+                        </span>
+                        <span class="text-[10px] text-slate-400">PDF, JPG, PNG up to 10MB</span>
+                      </div>
+                    </div>
+                  </div>
+
                   <!-- Actions -->
                   <div class="flex justify-end gap-3 pt-4 border-t border-slate-100">
                     <button type="button" (click)="activeTab = 'listings'" class="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs rounded-xl transition">Cancel</button>
-                    <button type="submit" [disabled]="propertyForm.invalid || isSaving" class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs rounded-xl transition shadow-md disabled:opacity-50 flex items-center gap-1.5">
+                    <button type="submit" [disabled]="propertyForm.invalid || isSaving || (!isEditMode && !selectedAddPropertyDocFile)" class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs rounded-xl transition shadow-md disabled:opacity-50 flex items-center gap-1.5">
                       <span *ngIf="isSaving" class="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
                       {{ isEditMode ? 'Update Listing' : 'Save Listing' }}
                     </button>
@@ -875,6 +899,7 @@ export class ProviderDashboardComponent implements OnInit {
   // Edit Mode state
   isEditMode = false;
   editingPropertyId: string | null = null;
+  selectedAddPropertyDocFile: File | null = null;
 
   constructor() {
     this.initForm();
@@ -979,6 +1004,10 @@ export class ProviderDashboardComponent implements OnInit {
     if (e.boundary !== undefined) {
       this.lastDrawnBoundary = e.boundary || [];
     }
+  }
+
+  onAddPropertyFileSelected(event: any): void {
+    this.selectedAddPropertyDocFile = event.target.files[0] || null;
   }
 
   // Upload Property Photo
@@ -1129,11 +1158,43 @@ export class ProviderDashboardComponent implements OnInit {
         }
       });
     } else {
-      this.propertyService.createProperty(payload).subscribe({
-        next: (res) => this.finishSave(res?.propertyCode),
-        error: (err) => {
-          console.error('Failed to create property:', err);
-          alert(`Error saving property: ${err?.error?.message || err?.message || 'Unknown error. Check console.'}`);
+      if (!this.selectedAddPropertyDocFile) {
+        alert('Please choose a land document to upload.');
+        this.isSaving = false;
+        return;
+      }
+
+      this.cloudinaryService.uploadFile(this.selectedAddPropertyDocFile).subscribe({
+        next: (uploadRes) => {
+          this.propertyService.createProperty(payload).subscribe({
+            next: (createdProperty) => {
+              const docPayload: any = {
+                documentType: 'PATTA',
+                fileUrl: uploadRes.secure_url
+              };
+              this.propertyService.uploadDocument(createdProperty.id, docPayload).subscribe({
+                next: () => {
+                  this.selectedAddPropertyDocFile = null;
+                  this.finishSave(createdProperty?.propertyCode);
+                },
+                error: (docErr) => {
+                  console.error('Property created, but document record upload failed:', docErr);
+                  alert('Property was created, but failed to save document details.');
+                  this.selectedAddPropertyDocFile = null;
+                  this.finishSave(createdProperty?.propertyCode);
+                }
+              });
+            },
+            error: (err) => {
+              console.error('Failed to create property:', err);
+              alert(`Error saving property: ${err?.error?.message || err?.message || 'Unknown error.'}`);
+              this.isSaving = false;
+            }
+          });
+        },
+        error: (uploadErr) => {
+          console.error('Failed to upload document file:', uploadErr);
+          alert('Error uploading document file to storage. Please try again.');
           this.isSaving = false;
         }
       });
@@ -1166,6 +1227,7 @@ export class ProviderDashboardComponent implements OnInit {
   openAddPropertyForm(): void {
     this.isEditMode = false;
     this.editingPropertyId = null;
+    this.selectedAddPropertyDocFile = null;
     this.lastDrawnBoundary = [];
     this.propertyForm.reset({
       category: 'AGRICULTURAL',
