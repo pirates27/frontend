@@ -41,11 +41,8 @@ export const Map: React.FC<MapProps> = ({
   
   const [loading, setLoading] = useState(true);
   const [isSatellite, setIsSatellite] = useState(false);
-  const [drawMode, setDrawMode] = useState<'pin' | 'draw'>('pin');
-  const [boundaryPoints, setBoundaryPoints] = useState<[number, number][]>([]);
   
   const pickerMarkerRef = useRef<mapboxgl.Marker | null>(null);
-  const boundaryMarkersRef = useRef<mapboxgl.Marker[]>([]);
   const propertyMarkersRef = useRef<mapboxgl.Marker[]>([]);
 
   const handleReverseGeocode = useCallback(async (lng: number, lat: number, currentBoundary: [number, number][]) => {
@@ -94,9 +91,9 @@ export const Map: React.FC<MapProps> = ({
               
             pickerMarkerRef.current.on('dragend', () => {
               const lngLat = pickerMarkerRef.current!.getLngLat();
-              handleReverseGeocode(lngLat.lng, lngLat.lat, boundaryPoints);
+              handleReverseGeocode(lngLat.lng, lngLat.lat, initialBoundary);
             });
-            handleReverseGeocode(pickerLng, pickerLat, boundaryPoints);
+            handleReverseGeocode(pickerLng, pickerLat, initialBoundary);
           }
         } else if (mode === 'detail' && properties.length > 0) {
           const p = properties[0];

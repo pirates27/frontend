@@ -84,5 +84,18 @@ export const authService = {
 
   getUserRole: (): RoleType | null => {
     return localStorage.getItem('user_role') as RoleType | null;
+  },
+
+  currentUser: (): User | null => {
+    const role = localStorage.getItem('user_role') as RoleType;
+    if (!role) return null;
+    return {
+      id: localStorage.getItem('user_id') || 'u-123',
+      email: 'user@example.com',
+      firstName: 'Test',
+      lastName: 'User',
+      role: role,
+      isActive: true
+    };
   }
 };

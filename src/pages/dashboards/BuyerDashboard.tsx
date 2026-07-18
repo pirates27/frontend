@@ -25,7 +25,7 @@ export const BuyerDashboard = () => {
   const [bookmarkIds, setBookmarkIds] = useState<Set<string>>(new Set());
 
   // Filter Form state
-  const [filters, setFilters] = useState({ state: '', district: '', category: '' });
+  const [filters, setFilters] = useState<{ state: string; district: string; category: any }>({ state: '', district: '', category: '' });
 
   // AI Chat states
   const [selectedConvoId, setSelectedConvoId] = useState<string | null>(null);
@@ -119,7 +119,7 @@ export const BuyerDashboard = () => {
     loadData(); // Note: passing empty in actual implementation is needed if loadData uses stale state
   };
 
-  const onMapMarkerClick = (e: any) => {
+  const onMapMarkerClick = () => {
     // Navigate to property detail or open card
   };
 

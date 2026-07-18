@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Mail, Lock, AlertCircle, Loader2, User, Phone, CheckCircle } from 'lucide-react';
+import { AlertCircle, Loader2, CheckCircle } from 'lucide-react';
 import { authService } from '../../services/auth.service';
 
 export const Register = () => {

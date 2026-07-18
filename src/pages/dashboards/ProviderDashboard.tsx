@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { propertyService } from '../../services/property.service';
 import { authService } from '../../services/auth.service';
@@ -232,7 +232,7 @@ export const ProviderDashboard = () => {
     if (Object.keys(errors).length > 0) return;
 
     setIsSaving(true);
-    let payload = {
+    let payload: any = {
       ...propertyForm,
       area: Number(propertyForm.area),
       price: Number(propertyForm.price)
@@ -550,7 +550,7 @@ export const ProviderDashboard = () => {
                             </div>
 
                             <div className="flex justify-between items-center pt-3 border-t border-slate-100 mt-auto">
-                              <span className="text-[9px] text-slate-400">{new Date(p.createdAt).toLocaleDateString()}</span>
+                              <span className="text-[9px] text-slate-400">{new Date(p.createdAt || Date.now()).toLocaleDateString()}</span>
                               <button onClick={(e) => { e.stopPropagation(); editProperty(p); }} className="text-[10px] px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold rounded-md transition-colors border border-emerald-100 shadow-xs flex items-center gap-1.5">
                                 <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg> Edit Property
                               </button>

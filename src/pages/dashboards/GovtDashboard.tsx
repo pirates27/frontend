@@ -508,7 +508,7 @@ export const GovtDashboard = () => {
                           </div>
                         </div>
                         <div className="border-t border-slate-100 mt-4 pt-3 flex justify-between items-center text-[10px] text-slate-400">
-                          <span>Created: {new Date(p.createdAt).toLocaleDateString()}</span>
+                          <span>Created: {new Date(p.createdAt || Date.now()).toLocaleDateString()}</span>
                           <span className="text-emerald-600 font-bold">Inspect details &rarr;</span>
                         </div>
                       </div>
