@@ -63,4 +63,4 @@ An AI-powered government land verification portal designed to prevent real estat
 Please ensure all pull requests pass TypeScript compilation (`npm run build`) before submitting.
 
 ---
-*Built as part of a modernization migration from Angular to React.*
+*Built as part of a modernization migration from Angular to React + Vite. The migration is fully complete, porting all dashboards, UI elements, and API integrations with exact fidelity.*
