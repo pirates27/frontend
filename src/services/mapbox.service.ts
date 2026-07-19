@@ -41,7 +41,7 @@ export const mapboxService = {
 
   reverseGeocode: async (lng: number, lat: number): Promise<any> => {
     const config = getMapboxConfig();
-    const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=${config.accessToken}&types=address,locality,neighborhood,postcode`;
+    const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=${config.accessToken}&types=address,locality,neighborhood,postcode,place,district,region`;
     const response = await axios.get(url);
     const res = response.data;
     

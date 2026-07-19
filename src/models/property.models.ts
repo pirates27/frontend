@@ -76,6 +76,7 @@ export interface AiVerification {
   ownershipMatch: boolean;
   riskScore: number;
   summary?: string;
+  reasoning?: string;
   confidence: number;
   generatedDate: string;
 }
@@ -117,8 +118,8 @@ export type VisitStatus = 'SCHEDULED' | 'CONFIRMED' | 'REJECTED' | 'COMPLETED' |
 
 export interface PropertyVisit {
   id: string;
-  buyerId: string;
-  propertyId: string;
+  buyer?: User;
+  property?: Property;
   visitDate: string;
   visitTime: string;
   status: VisitStatus;

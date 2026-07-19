@@ -10,12 +10,16 @@ export const propertyService = {
   getProperties: async (filters: {
     district?: string;
     state?: string;
-    category?: Models.PropertyCategory;
+    category?: Models.PropertyCategory | '';
     priceMin?: number;
     priceMax?: number;
-    status?: Models.PropertyStatus;
+    status?: Models.PropertyStatus | '';
   } = {}): Promise<Models.Property[]> => {
-    const response = await api.get<Models.Property[]>('/api/properties', { params: filters });
+    // Clean up empty string values so they aren't sent to the backend
+    const cleanedFilters = Object.fromEntries(
+      Object.entries(filters).filter(([_, v]) => v !== '' && v !== null && v !== undefined)
+    );
+    const response = await api.get<Models.Property[]>('/api/properties', { params: cleanedFilters });
     return response.data;
   },
 

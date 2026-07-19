@@ -33,6 +33,7 @@ export const authService = {
     
     localStorage.setItem('user_role', user.role);
     localStorage.setItem('user_id', user.id);
+    localStorage.setItem('user_profile', JSON.stringify(user));
     
     return user;
   },
@@ -44,6 +45,7 @@ export const authService = {
     localStorage.removeItem('refresh_token');
     localStorage.removeItem('user_role');
     localStorage.removeItem('user_id');
+    localStorage.removeItem('user_profile');
 
     if (token) {
       try {
@@ -89,6 +91,14 @@ export const authService = {
   currentUser: (): User | null => {
     const role = localStorage.getItem('user_role') as RoleType;
     if (!role) return null;
+    
+    const profileStr = localStorage.getItem('user_profile');
+    if (profileStr) {
+      try {
+        return JSON.parse(profileStr);
+      } catch (e) {}
+    }
+    
     return {
       id: localStorage.getItem('user_id') || 'u-123',
       email: 'user@example.com',

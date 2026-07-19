@@ -1,323 +1,425 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import { propertyService } from '../../services/property.service';
 import { authService } from '../../services/auth.service';
 import type { AnalyticsDashboard, DeveloperKey, DeveloperKeyLog, Notification } from '../../models/property.models';
+import { DashboardLayout } from '../../components/layout/DashboardLayout';
+import { adminNavItems } from '../../components/layout/Sidebar';
+import { GlassCard } from '../../components/ui/GlassCard';
+import { StatCard } from '../../components/ui/StatCard';
+import { Button } from '../../components/ui/Button';
+import { Chip } from '../../components/ui/Badge';
+import { SkeletonStatCard, SkeletonCard } from '../../components/ui/Skeleton';
+import { EmptyState } from '../../components/ui/EmptyState';
+import { ProgressBar } from '../../components/ui/ProgressBar';
+import {
+  Eye, Search, Shield, AlertTriangle, Code2, Key, Plus,
+  Copy, Trash2, Clock, CheckCircle, Bell, Terminal, RefreshCw, Activity
+} from 'lucide-react';
 
 export const AdminDashboard = () => {
-  const navigate = useNavigate();
-  
   const [activeTab, setActiveTab] = useState<'analytics' | 'developer' | 'notifications'>('analytics');
-  
+
   const [analytics, setAnalytics] = useState<AnalyticsDashboard | null>(null);
+  const [analyticsLoading, setAnalyticsLoading] = useState(true);
   const [developerKeys, setDeveloperKeys] = useState<DeveloperKey[]>([]);
   const [selectedKeyLogs, setSelectedKeyLogs] = useState<DeveloperKeyLog[] | null>(null);
   const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [notifLoading, setNotifLoading] = useState(false);
 
-  // Key creation state
   const [showCreateKey, setShowCreateKey] = useState(false);
   const [newKeyName, setNewKeyName] = useState('');
   const [generatedRawKey, setGeneratedRawKey] = useState<string | null>(null);
+  const [keyLoading, setKeyLoading] = useState(false);
+  const [copiedKey, setCopiedKey] = useState(false);
 
   const currentUser = authService.currentUser();
-  const unreadNotificationsCount = notifications.filter(n => !n.isRead).length;
+  const unreadCount = notifications.filter(n => !n.isRead).length;
 
-  useEffect(() => {
+  useEffect(() => { loadAll(); }, []);
+
+  const loadAll = () => {
     loadAnalytics();
     loadKeys();
     loadNotifications();
-  }, []);
+  };
 
   const loadAnalytics = async () => {
+    setAnalyticsLoading(true);
     try {
       const res = await propertyService.getAdminAnalytics();
       setAnalytics(res);
     } catch {
       setAnalytics(null);
+    } finally {
+      setAnalyticsLoading(false);
     }
   };
 
   const loadKeys = async () => {
-    try {
-      const res = await propertyService.getDeveloperKeys();
-      setDeveloperKeys(res);
-    } catch (e) {}
+    try { setDeveloperKeys(await propertyService.getDeveloperKeys()); } catch {}
   };
 
   const loadNotifications = async () => {
-    try {
-      const res = await propertyService.getNotifications();
-      setNotifications(res);
-    } catch (e) {}
+    setNotifLoading(true);
+    try { setNotifications(await propertyService.getNotifications()); } catch {}
+    finally { setNotifLoading(false); }
   };
 
   const markNotificationRead = async (id: string) => {
-    try {
-      await propertyService.markNotificationRead(id);
-      loadNotifications();
-    } catch (e) {}
+    try { await propertyService.markNotificationRead(id); loadNotifications(); } catch {}
   };
 
   const createKey = async () => {
     if (!newKeyName.trim()) return;
+    setKeyLoading(true);
     try {
-      // Note: backend expects name, scope, rateLimit, IPs, but original component 
-      // only passes newKeyName, we pass defaults here to match standard create pattern
       const res = await propertyService.createDeveloperKey(newKeyName, 'READ_WRITE', 300, '0.0.0.0/0');
       setNewKeyName('');
       setGeneratedRawKey(res.rawApiKey || null);
       loadKeys();
-    } catch (e) {}
+    } catch {}
+    finally { setKeyLoading(false); }
   };
 
   const viewKeyLogs = async (keyId: string) => {
-    try {
-      const res = await propertyService.getDeveloperKeyLogs(keyId);
-      setSelectedKeyLogs(res);
-    } catch (e) {}
+    try { setSelectedKeyLogs(await propertyService.getDeveloperKeyLogs(keyId)); } catch {}
   };
 
   const revokeKey = async (keyId: string) => {
     try {
       await propertyService.deleteDeveloperKey(keyId);
-      loadKeys();
-      setSelectedKeyLogs(null);
+      loadKeys(); setSelectedKeyLogs(null);
     } catch (err: any) {
-      if (err.status === 200) {
-        loadKeys();
-        setSelectedKeyLogs(null);
-      }
+      if (err.status === 200) { loadKeys(); setSelectedKeyLogs(null); }
     }
   };
 
-  const logout = () => {
-    authService.logout();
-    navigate('/auth/login');
+  const copyKey = async (key: string) => {
+    await navigator.clipboard.writeText(key);
+    setCopiedKey(true);
+    setTimeout(() => setCopiedKey(false), 2000);
+  };
+
+  const navItems = adminNavItems(unreadCount);
+
+  const notifTypeColor: Record<string, string> = {
+    SYSTEM: 'bg-primary-500/15 border-primary-500/30 text-primary-400',
+    PROPERTY_VERIFIED: 'bg-accent-500/15 border-accent-500/30 text-accent-400',
+    VISIT_SCHEDULED: 'bg-cyan-500/15 border-cyan-500/30 text-cyan-400',
+    FRAUD_ALERT: 'bg-danger-500/15 border-danger-500/30 text-danger-400',
+    API_LIMIT_REACHED: 'bg-warning-500/15 border-warning-500/30 text-warning-400',
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col pb-12">
-      {/* Navbar */}
-      <nav className="bg-slate-900 text-white shadow-md">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-between items-center h-16">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-emerald-500 flex items-center justify-center font-bold text-white shadow-md">LL</div>
-            <span className="text-xl font-bold tracking-tight text-white">Land<span className="text-emerald-400">Lens</span></span>
-            <span className="bg-red-800/40 text-red-300 border border-red-500/20 text-[10px] font-bold uppercase px-2.5 py-0.5 rounded-full ml-2">Admin Panel</span>
-          </div>
-
-          <div className="flex items-center gap-4">
-            <div className="text-right hidden sm:block">
-              <p className="text-sm font-semibold text-white">Administrator</p>
-              <p className="text-xs text-slate-400">{currentUser?.email}</p>
-            </div>
-            <button onClick={logout} className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white font-medium text-xs rounded-lg transition border border-slate-700/50">
-              Sign Out
-            </button>
-          </div>
-        </div>
-      </nav>
-
-      {/* Main Layout */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-8 flex-1 grid grid-cols-1 lg:grid-cols-12 gap-8">
-        
-        {/* Sidebar Navigation */}
-        <div className="lg:col-span-3 space-y-2">
-          <button onClick={() => setActiveTab('analytics')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl shadow-xs hover:bg-slate-100 transition-all font-semibold text-sm text-left ${activeTab === 'analytics' ? 'bg-emerald-600 text-white' : 'bg-white text-slate-700'}`}>
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2" /></svg>
-            System Metrics
-          </button>
-          <button onClick={() => setActiveTab('developer')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl shadow-xs hover:bg-slate-100 transition-all font-semibold text-sm text-left ${activeTab === 'developer' ? 'bg-emerald-600 text-white' : 'bg-white text-slate-700'}`}>
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" /></svg>
-            Developer Portal
-          </button>
-          <button onClick={() => setActiveTab('notifications')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl shadow-xs hover:bg-slate-100 transition-all font-semibold text-sm text-left ${activeTab === 'notifications' ? 'bg-emerald-600 text-white' : 'bg-white text-slate-700'}`}>
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>
-            System Notifications
-            {unreadNotificationsCount > 0 && <span className="ml-auto px-2 py-0.5 bg-amber-500 text-white font-bold rounded-full text-[10px]">{unreadNotificationsCount}</span>}
-          </button>
-        </div>
-
-        {/* Main Content */}
-        <div className="lg:col-span-9 space-y-6">
-          
-          {/* TAB 1: ANALYTICS */}
-          {activeTab === 'analytics' && (
-            <div className="space-y-6">
-              <div className="bg-white p-6 rounded-2xl shadow-xs border border-slate-100">
-                <h2 className="text-xl font-bold text-slate-800">Platform Analytics Dashboard</h2>
-                <p className="text-xs text-slate-500 mt-1">Pre-aggregated rollups from daily platform database metrics.</p>
+    <DashboardLayout
+      activeTab={activeTab}
+      onTabChange={(tab) => setActiveTab(tab as any)}
+      navItems={navItems}
+      role="ADMIN"
+      title="Admin Control Panel"
+      subtitle={`Welcome back, ${currentUser?.firstName || 'Administrator'}`}
+      unreadCount={unreadCount}
+      mobileNavItems={navItems}
+    >
+      {/* ── ANALYTICS TAB ── */}
+      {activeTab === 'analytics' && (
+        <div className="space-y-6">
+          {/* Welcome Banner */}
+          <GlassCard className="relative overflow-hidden !bg-gradient-to-r !from-primary-900/40 !to-cyan-900/20 !border-primary-500/20">
+            <div className="absolute top-0 right-0 w-64 h-64 bg-primary-500/10 rounded-full blur-3xl pointer-events-none" />
+            <div className="relative z-10 flex items-center justify-between flex-wrap gap-4">
+              <div>
+                <h2 className="text-white text-xl font-bold">
+                  Platform Analytics Dashboard
+                </h2>
+                <p className="text-dark-400 text-sm mt-1">
+                  Pre-aggregated rollups from daily platform database metrics
+                </p>
               </div>
-
-              {analytics ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
-                  <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-xs flex flex-col justify-between">
-                    <span className="text-[10px] font-extrabold uppercase text-slate-400">Property Views</span>
-                    <p className="text-2xl font-extrabold text-slate-800 mt-2">{analytics.propertyViews}</p>
-                  </div>
-                  <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-xs flex flex-col justify-between">
-                    <span className="text-[10px] font-extrabold uppercase text-slate-400">Total Searches</span>
-                    <p className="text-2xl font-extrabold text-slate-800 mt-2">{analytics.searchCount}</p>
-                  </div>
-                  <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-xs flex flex-col justify-between">
-                    <span className="text-[10px] font-extrabold uppercase text-slate-400">Audit Verifications</span>
-                    <p className="text-2xl font-extrabold text-emerald-600 mt-2">{analytics.verificationCount}</p>
-                  </div>
-                  <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-xs flex flex-col justify-between">
-                    <span className="text-[10px] font-extrabold uppercase text-slate-400">API Gateway Calls</span>
-                    <p className="text-2xl font-extrabold text-brand-600 mt-2">{analytics.apiCalls}</p>
-                  </div>
-                </div>
-              ) : (
-                <div className="text-center p-12 bg-white rounded-2xl border border-slate-100 text-slate-400 text-xs">
-                  Loading analytics widgets...
-                </div>
-              )}
+              <Button
+                variant="secondary" size="sm"
+                icon={<RefreshCw className="w-3.5 h-3.5" />}
+                onClick={loadAnalytics}
+              >
+                Refresh
+              </Button>
             </div>
+          </GlassCard>
+
+          {/* Stats Grid */}
+          {analyticsLoading ? (
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              {[0,1,2,3].map(i => <SkeletonStatCard key={i} />)}
+            </div>
+          ) : analytics ? (
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              <StatCard label="Property Views" value={analytics.propertyViews} icon={<Eye className="w-5 h-5" />} color="cyan" delay={0} />
+              <StatCard label="Total Searches" value={analytics.searchCount} icon={<Search className="w-5 h-5" />} color="primary" delay={0.1} />
+              <StatCard label="Verifications" value={analytics.verificationCount} icon={<Shield className="w-5 h-5" />} color="accent" delay={0.2} />
+              <StatCard label="Fraud Cases" value={analytics.fraudCount} icon={<AlertTriangle className="w-5 h-5" />} color="danger" delay={0.3} />
+            </div>
+          ) : (
+            <GlassCard className="text-center py-10">
+              <AlertTriangle className="w-10 h-10 text-warning-400 mx-auto mb-3" />
+              <p className="text-white font-semibold text-sm">Analytics access restricted</p>
+              <p className="text-dark-400 text-xs mt-1">Only accessible to Super Admin</p>
+            </GlassCard>
           )}
 
-          {/* TAB 2: DEVELOPER PORTAL */}
-          {activeTab === 'developer' && (
-            <div className="space-y-6">
-              <div className="bg-white p-6 rounded-2xl shadow-xs border border-slate-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                <div>
-                  <h2 className="text-xl font-bold text-slate-800">Developer API Key integration</h2>
-                  <p className="text-xs text-slate-500 mt-1">Generate external verification keys for partners and track HTTP usage logs.</p>
-                </div>
-                <button onClick={() => setShowCreateKey(!showCreateKey)} className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs rounded-xl shadow-md transition-all flex items-center gap-1.5">
-                  Generate API Key
-                </button>
-              </div>
-
-              {showCreateKey && (
-                <div className="bg-white p-5 rounded-2xl border border-emerald-500/20 shadow-sm space-y-4">
-                  <h3 className="font-bold text-slate-800 text-xs">Generate new external API key</h3>
-                  <div className="flex flex-col sm:flex-row gap-3">
-                    <input type="text" value={newKeyName} onChange={e => setNewKeyName(e.target.value)} placeholder="E.g., PartnerPortalIntegration" className="flex-1 bg-slate-50 border border-slate-200 rounded-xl py-2 px-3 focus:outline-hidden focus:border-emerald-500 text-xs" />
-                    <button onClick={createKey} className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs rounded-xl transition">
-                      Create Key
-                    </button>
+          {/* API Usage + Progress */}
+          {analytics && (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <GlassCard>
+                <div className="flex items-center justify-between mb-5">
+                  <div>
+                    <h3 className="text-white font-semibold text-sm">API Gateway Calls</h3>
+                    <p className="text-dark-500 text-xs mt-0.5">Total API requests processed</p>
                   </div>
-                  {generatedRawKey && (
-                    <div className="p-3.5 bg-amber-50 border border-amber-200 text-amber-800 rounded-xl text-xs space-y-2">
-                      <p className="font-bold">Write down this API Key (It will not be shown again!):</p>
-                      <div className="bg-white p-2 rounded-lg border border-amber-200 font-mono select-all font-bold text-center">
-                        {generatedRawKey}
-                      </div>
+                  <div className="w-9 h-9 rounded-xl bg-primary-500/20 flex items-center justify-center">
+                    <Activity className="w-4 h-4 text-primary-400" />
+                  </div>
+                </div>
+                <p className="text-3xl font-bold text-primary-300 mb-4">
+                  {analytics.apiCalls.toLocaleString('en-IN')}
+                </p>
+                <ProgressBar value={Math.min((analytics.apiCalls / 10000) * 100, 100)} color="primary" label="API Quota Usage" showValue />
+              </GlassCard>
+
+              <GlassCard>
+                <h3 className="text-white font-semibold text-sm mb-5">Verification Performance</h3>
+                <div className="space-y-3">
+                  <ProgressBar value={analytics.propertyViews > 0 ? (analytics.verificationCount / analytics.propertyViews) * 100 : 0} color="accent" label="Verification Rate" showValue />
+                  <ProgressBar value={analytics.searchCount > 0 ? Math.min((analytics.propertyViews / analytics.searchCount) * 100, 100) : 0} color="cyan" label="Search to View Conversion" showValue />
+                  <ProgressBar value={analytics.verificationCount > 0 ? Math.min((analytics.fraudCount / analytics.verificationCount) * 100, 100) : 0} color="danger" label="Fraud Detection Rate" showValue />
+                </div>
+              </GlassCard>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── DEVELOPER TAB ── */}
+      {activeTab === 'developer' && (
+        <div className="space-y-5">
+          {/* Header */}
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div>
+              <h2 className="text-white font-bold text-lg">Developer API Keys</h2>
+              <p className="text-dark-400 text-sm mt-0.5">Generate and manage external partner integration keys</p>
+            </div>
+            <Button
+              variant="primary" size="sm"
+              icon={<Plus className="w-4 h-4" />}
+              onClick={() => setShowCreateKey(v => !v)}
+            >
+              {showCreateKey ? 'Close' : 'Generate API Key'}
+            </Button>
+          </div>
+
+          {/* Create Key Form */}
+          {showCreateKey && (
+            <motion.div
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+            >
+              <GlassCard className="!border-primary-500/20">
+                <h3 className="text-white font-semibold text-sm mb-4 flex items-center gap-2">
+                  <Key className="w-4 h-4 text-primary-400" />
+                  Generate New External API Key
+                </h3>
+                <div className="flex gap-3">
+                  <input
+                    type="text" value={newKeyName}
+                    onChange={e => setNewKeyName(e.target.value)}
+                    placeholder="E.g., PartnerPortalIntegration"
+                    className="input-dark flex-1"
+                  />
+                  <Button variant="primary" size="sm" loading={keyLoading} onClick={createKey}>
+                    Create Key
+                  </Button>
+                </div>
+
+                {generatedRawKey && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="mt-4 p-4 bg-warning-500/10 border border-warning-500/20 rounded-xl"
+                  >
+                    <p className="text-warning-400 text-xs font-bold mb-2 flex items-center gap-2">
+                      <AlertTriangle className="w-3.5 h-3.5" />
+                      Save this key now — it will not be shown again!
+                    </p>
+                    <div className="flex items-center gap-2 bg-dark-950/60 rounded-xl p-3 border border-white/[0.06]">
+                      <code className="text-accent-300 text-xs font-mono flex-1 truncate">{generatedRawKey}</code>
+                      <button
+                        onClick={() => copyKey(generatedRawKey)}
+                        className="text-dark-400 hover:text-white transition-colors"
+                      >
+                        {copiedKey ? <CheckCircle className="w-4 h-4 text-accent-400" /> : <Copy className="w-4 h-4" />}
+                      </button>
                     </div>
-                  )}
-                </div>
-              )}
-
-              <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden shadow-xs">
-                <div className="px-6 py-4 border-b border-slate-100 bg-slate-50">
-                  <h3 className="font-bold text-slate-800 text-xs">Active salt-hashed keys</h3>
-                </div>
-
-                {developerKeys.length > 0 ? (
-                  <div className="divide-y divide-slate-100">
-                    {developerKeys.map(key => (
-                      <div key={key.id || key.apiKeyId} className="p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 hover:bg-slate-50/50 transition">
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-2">
-                            <span className="font-bold text-slate-800 text-xs">{key.name}</span>
-                            <span className={`px-2 py-0.5 text-[8px] font-extrabold uppercase rounded-full ${key.status === 'ACTIVE' ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'}`}>
-                              {key.status}
-                            </span>
-                          </div>
-                          <p className="text-[10px] text-slate-400 font-mono">Prefix: {key.prefix}*** | Key ID: {key.id || key.apiKeyId}</p>
-                        </div>
-                        <div className="flex gap-2">
-                          <button onClick={() => viewKeyLogs(key.id || key.apiKeyId!)} className="px-3.5 py-1.5 bg-slate-900 hover:bg-slate-800 text-white font-bold text-[10px] rounded-lg shadow-xs transition">
-                            View Access Logs
-                          </button>
-                          <button onClick={() => revokeKey(key.id || key.apiKeyId!)} className="px-3.5 py-1.5 bg-rose-600 hover:bg-rose-500 text-white font-bold text-[10px] rounded-lg shadow-xs transition">
-                            Revoke
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="p-8 text-center text-slate-400 text-xs">
-                    No active external developer integration keys found.
-                  </div>
+                  </motion.div>
                 )}
-              </div>
-
-              {selectedKeyLogs && (
-                <div className="bg-white rounded-2xl border border-slate-150 p-6 space-y-4 shadow-sm">
-                  <div className="flex justify-between items-center border-b border-slate-100 pb-3">
-                    <h4 className="font-bold text-slate-800 text-xs">HTTP Usage Access Logs (Last 50 calls)</h4>
-                    <button onClick={() => setSelectedKeyLogs(null)} className="text-xs text-slate-400 hover:text-slate-600">Close Logs</button>
-                  </div>
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left border-collapse text-xs">
-                      <thead>
-                        <tr className="bg-slate-50 border-b border-slate-100 text-slate-500 font-semibold">
-                          <th className="py-2.5 px-3">Method</th>
-                          <th className="py-2.5 px-3">Endpoint</th>
-                          <th className="py-2.5 px-3">Status</th>
-                          <th className="py-2.5 px-3">IP Address</th>
-                          <th className="py-2.5 px-3">Response Time</th>
-                          <th className="py-2.5 px-3">Timestamp</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-100">
-                        {selectedKeyLogs.map((log, i) => (
-                          <tr key={i}>
-                            <td className={`py-2.5 px-3 font-bold ${log.method === 'GET' ? 'text-blue-600' : 'text-emerald-600'}`}>{log.method}</td>
-                            <td className="py-2.5 px-3 truncate max-w-[200px]">{log.endpoint}</td>
-                            <td className={`py-2.5 px-3 font-semibold ${log.statusCode < 300 ? 'text-emerald-600' : 'text-rose-500'}`}>{log.statusCode}</td>
-                            <td className="py-2.5 px-3 text-slate-500">{log.ipAddress}</td>
-                            <td className="py-2.5 px-3 text-slate-500">{log.responseTimeMs} ms</td>
-                            <td className="py-2.5 px-3 text-slate-400 text-[10px]">{new Date(log.requestTimestamp).toLocaleString()}</td>
-                          </tr>
-                        ))}
-                        {selectedKeyLogs.length === 0 && (
-                          <tr>
-                            <td colSpan={6} className="text-center py-6 text-slate-400">No calls logged for this API key.</td>
-                          </tr>
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              )}
-            </div>
+              </GlassCard>
+            </motion.div>
           )}
 
-          {/* TAB 3: NOTIFICATIONS */}
-          {activeTab === 'notifications' && (
-            <div className="space-y-6">
-              <div className="bg-white p-6 rounded-2xl shadow-xs border border-slate-100">
-                <h2 className="text-xl font-bold text-slate-800">System Notifications</h2>
-                <p className="text-xs text-slate-500 mt-1">Alerts regarding verification statuses, visits, and account activity.</p>
-              </div>
-              {notifications.length > 0 ? (
-                <div className="space-y-4">
-                  {notifications.map(notification => (
-                    <div key={notification.id} className={`p-5 rounded-2xl border shadow-xs flex justify-between items-start gap-4 transition-all hover:opacity-100 ${notification.isRead ? 'bg-white opacity-70 border-slate-100' : 'bg-emerald-50 border-emerald-200'}`}>
-                      <div className="space-y-1 flex-1">
-                        <h3 className="font-bold text-sm text-slate-800">{notification.title}</h3>
-                        <p className="text-xs text-slate-600 leading-relaxed">{notification.message}</p>
-                        <p className="text-[10px] text-slate-400 font-medium">{new Date(notification.createdTime).toLocaleString()}</p>
-                      </div>
-                      {!notification.isRead ? (
-                        <button onClick={() => markNotificationRead(notification.id)} className="shrink-0 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-[10px] rounded-lg transition">Mark Read</button>
-                      ) : (
-                        <svg className="w-5 h-5 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" /></svg>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center p-12 bg-white rounded-2xl border border-slate-150 text-slate-400 text-xs">You have no notifications.</div>
-              )}
+          {/* Keys Table */}
+          <GlassCard padding="p-0">
+            <div className="px-6 py-4 border-b border-white/[0.06] flex items-center justify-between">
+              <h3 className="text-white font-semibold text-sm flex items-center gap-2">
+                <Code2 className="w-4 h-4 text-primary-400" />
+                Active Integration Keys
+              </h3>
+              <Chip label={`${developerKeys.length} keys`} color="primary" />
             </div>
+
+            {developerKeys.length > 0 ? (
+              <div className="divide-y divide-white/[0.04]">
+                {developerKeys.map(key => (
+                  <div key={key.id || key.apiKeyId} className="px-6 py-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 hover:bg-white/[0.02] transition-colors">
+                    <div className="space-y-1.5">
+                      <div className="flex items-center gap-2">
+                        <span className="text-white font-semibold text-sm">{key.name}</span>
+                        <Chip
+                          label={key.status}
+                          color={key.status === 'ACTIVE' ? 'accent' : 'danger'}
+                          size="xs"
+                          dot
+                        />
+                      </div>
+                      <p className="text-dark-500 text-[11px] font-mono">
+                        Prefix: {key.prefix}*** · ID: {(key.id || key.apiKeyId)?.slice(0, 8)}...
+                      </p>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="glass" size="xs"
+                        icon={<Terminal className="w-3.5 h-3.5" />}
+                        onClick={() => viewKeyLogs(key.id || key.apiKeyId!)}
+                      >
+                        View Logs
+                      </Button>
+                      <Button
+                        variant="danger" size="xs"
+                        icon={<Trash2 className="w-3.5 h-3.5" />}
+                        onClick={() => revokeKey(key.id || key.apiKeyId!)}
+                      >
+                        Revoke
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="p-10 text-center text-dark-500 text-sm">
+                No active developer keys found.
+              </div>
+            )}
+          </GlassCard>
+
+          {/* Logs Table */}
+          {selectedKeyLogs && (
+            <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
+              <GlassCard padding="p-0">
+                <div className="px-6 py-4 border-b border-white/[0.06] flex items-center justify-between">
+                  <h4 className="text-white font-semibold text-sm">HTTP Access Logs</h4>
+                  <button onClick={() => setSelectedKeyLogs(null)} className="text-dark-500 hover:text-white text-xs transition-colors">
+                    Close
+                  </button>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="border-b border-white/[0.06]">
+                        {['Method', 'Endpoint', 'Status', 'IP', 'Response Time', 'Timestamp'].map(h => (
+                          <th key={h} className="text-left px-5 py-3 text-dark-500 font-semibold uppercase tracking-wider text-[10px]">{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-white/[0.04]">
+                      {selectedKeyLogs.length === 0 ? (
+                        <tr><td colSpan={6} className="text-center py-8 text-dark-500">No calls logged for this API key.</td></tr>
+                      ) : selectedKeyLogs.map((log, i) => (
+                        <tr key={i} className="hover:bg-white/[0.02] transition-colors">
+                          <td className={`px-5 py-3 font-bold ${log.method === 'GET' ? 'text-cyan-400' : 'text-accent-400'}`}>{log.method}</td>
+                          <td className="px-5 py-3 text-dark-300 font-mono truncate max-w-[180px]">{log.endpoint}</td>
+                          <td className={`px-5 py-3 font-semibold ${log.statusCode < 300 ? 'text-accent-400' : 'text-danger-400'}`}>{log.statusCode}</td>
+                          <td className="px-5 py-3 text-dark-400">{log.ipAddress}</td>
+                          <td className="px-5 py-3 text-dark-400">{log.responseTimeMs}ms</td>
+                          <td className="px-5 py-3 text-dark-500">{new Date(log.requestTimestamp).toLocaleString()}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </GlassCard>
+            </motion.div>
           )}
         </div>
-      </main>
-    </div>
+      )}
+
+      {/* ── NOTIFICATIONS TAB ── */}
+      {activeTab === 'notifications' && (
+        <div className="space-y-5">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-white font-bold text-lg">System Notifications</h2>
+              <p className="text-dark-400 text-sm mt-0.5">Alerts about verifications, visits, and platform activity</p>
+            </div>
+            {unreadCount > 0 && (
+              <Chip label={`${unreadCount} unread`} color="danger" dot />
+            )}
+          </div>
+
+          {notifLoading ? (
+            <div className="space-y-3">{[0,1,2].map(i => <SkeletonCard key={i} />)}</div>
+          ) : notifications.length > 0 ? (
+            <div className="space-y-3">
+              {notifications.map(n => (
+                <motion.div
+                  key={n.id}
+                  initial={{ opacity: 0, x: -12 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  className={`
+                    glass-card p-5 flex items-start justify-between gap-4
+                    ${!n.isRead ? '!border-primary-500/20 !bg-primary-500/[0.04]' : ''}
+                  `}
+                >
+                  <div className="flex items-start gap-3 flex-1 min-w-0">
+                    <div className={`shrink-0 mt-0.5 px-2 py-1 rounded-lg border text-[10px] font-bold uppercase ${notifTypeColor[n.type] || 'bg-dark-700 text-dark-400'}`}>
+                      {n.type.replace(/_/g, ' ').slice(0, 8)}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-white font-semibold text-sm">{n.title}</h3>
+                      <p className="text-dark-400 text-xs mt-0.5 leading-relaxed">{n.message}</p>
+                      <p className="text-dark-600 text-[10px] mt-1.5 flex items-center gap-1">
+                        <Clock className="w-3 h-3" />
+                        {new Date(n.createdTime).toLocaleString()}
+                      </p>
+                    </div>
+                  </div>
+                  {!n.isRead ? (
+                    <Button variant="secondary" size="xs" onClick={() => markNotificationRead(n.id)}>
+                      Mark Read
+                    </Button>
+                  ) : (
+                    <CheckCircle className="w-4 h-4 text-dark-600 shrink-0" />
+                  )}
+                </motion.div>
+              ))}
+            </div>
+          ) : (
+            <EmptyState
+              icon={<Bell className="w-8 h-8" />}
+              title="No notifications"
+              description="You have no system notifications yet."
+            />
+          )}
+        </div>
+      )}
+    </DashboardLayout>
   );
 };

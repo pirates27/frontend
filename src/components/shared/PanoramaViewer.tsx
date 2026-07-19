@@ -5,7 +5,7 @@ interface PanoramaViewerProps {
   url?: string;
 }
 
-export const PanoramaViewer: React.FC<PanoramaViewerProps> = ({ url }) => {
+export const PanoramaViewer: React.FC<PanoramaViewerProps> = React.memo(({ url }) => {
   const [safeUrl, setSafeUrl] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [extractedUrl, setExtractedUrl] = useState<string>('');
@@ -58,7 +58,7 @@ export const PanoramaViewer: React.FC<PanoramaViewerProps> = ({ url }) => {
   }, [url]);
 
   return (
-    <div className="relative w-full h-full min-h-[350px] bg-slate-950 rounded-2xl overflow-hidden shadow-lg border border-slate-800 flex flex-col justify-between">
+    <div className="relative w-full h-full bg-slate-950 rounded-2xl overflow-hidden shadow-lg border border-slate-800 flex flex-col">
       {errorMsg ? (
         <div className="flex-1 flex flex-col items-center justify-center p-8 text-center text-slate-300">
           <AlertCircle className="w-12 h-12 text-rose-500 mb-4 animate-pulse" />
@@ -72,25 +72,30 @@ export const PanoramaViewer: React.FC<PanoramaViewerProps> = ({ url }) => {
         </div>
       ) : safeUrl ? (
         <>
-          <div className="absolute inset-0 w-full h-full z-10 bg-black">
-            <iframe 
+          {/* Iframe perfectly filling the container */}
+          <div className="absolute inset-0 w-full h-full z-10 overflow-hidden">
+            <iframe
               src={safeUrl}
-              className="w-full h-full border-0"
+              style={{ width: '100%', height: '100%', border: 'none', display: 'block' }}
               allowFullScreen
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture">
             </iframe>
           </div>
-          <div className="panorama-google-mask"></div>
-          <div className="panorama-google-mask-left"></div>
-          <div className="panorama-google-mask-right"></div>
-          
-          <div className="absolute top-4 left-4 z-30 bg-slate-900/90 text-white text-xs px-3 py-1.5 rounded-full border border-slate-700/50 flex items-center gap-1.5 backdrop-blur-xs">
-            <span className="w-2 h-2 bg-emerald-500 rounded-full animate-ping"></span>
-            <span>Interactive 360° View</span>
+
+          {/* Interactive badge — top-left */}
+          <div className="absolute top-2 left-2 z-30 bg-slate-900/80 text-white text-[9px] px-2 py-1 rounded-full border border-slate-700/50 flex items-center gap-1 backdrop-blur-sm pointer-events-none">
+            <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-ping"></span>
+            <span>360° View</span>
           </div>
 
-          <a href={url} target="_blank" rel="noreferrer" className="absolute top-4 right-4 z-30 bg-emerald-600/95 hover:bg-emerald-500 text-white font-bold text-xs px-3.5 py-1.5 rounded-xl shadow-md border border-emerald-500/25 transition-all flex items-center gap-1.5 backdrop-blur-xs">
-            <Maximize className="w-3.5 h-3.5" />
+          {/* Open Street View — bottom center */}
+          <a
+            href={url}
+            target="_blank"
+            rel="noreferrer"
+            className="absolute bottom-3 left-1/2 -translate-x-1/2 z-30 bg-emerald-600/95 hover:bg-emerald-500 text-white font-bold text-[10px] px-4 py-1.5 rounded-lg shadow-md border border-emerald-500/30 transition-all flex items-center gap-1.5 backdrop-blur-sm whitespace-nowrap"
+          >
+            <Maximize className="w-3 h-3" />
             Open Street View
           </a>
         </>
@@ -103,4 +108,4 @@ export const PanoramaViewer: React.FC<PanoramaViewerProps> = ({ url }) => {
       )}
     </div>
   );
-};
+});

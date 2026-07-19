@@ -1,53 +1,305 @@
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
 @import 'mapbox-gl/dist/mapbox-gl.css';
 
 @import "tailwindcss";
 
+/* ─── CSS Custom Properties (Design Tokens) ─────────────────────────── */
+:root {
+  /* Background system */
+  --bg-base: #020617;
+  --bg-elevated: #0f172a;
+  --bg-overlay: #1e293b;
+
+  /* Glass system */
+  --glass-bg: rgba(255, 255, 255, 0.04);
+  --glass-bg-hover: rgba(255, 255, 255, 0.07);
+  --glass-bg-active: rgba(255, 255, 255, 0.10);
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --glass-border-hover: rgba(255, 255, 255, 0.15);
+
+  /* Brand colors */
+  --primary: #2563eb;
+  --primary-glow: rgba(37, 99, 235, 0.35);
+  --secondary: #06b6d4;
+  --secondary-glow: rgba(6, 182, 212, 0.3);
+  --accent: #10b981;
+  --accent-glow: rgba(16, 185, 129, 0.3);
+  --danger: #ef4444;
+  --danger-glow: rgba(239, 68, 68, 0.3);
+  --warning: #f59e0b;
+
+  /* Text */
+  --text-primary: #f8fafc;
+  --text-secondary: #94a3b8;
+  --text-muted: #475569;
+
+  /* Shadows */
+  --shadow-glass: 0 8px 32px rgba(0, 0, 0, 0.5);
+  --shadow-card: 0 4px 24px rgba(0, 0, 0, 0.4);
+  --shadow-dropdown: 0 16px 48px rgba(0, 0, 0, 0.6);
+
+  /* Sidebar */
+  --sidebar-width: 260px;
+  --topbar-height: 64px;
+}
+
+/* ─── Base Styles ────────────────────────────────────────────────────── */
 @layer base {
+  * {
+    box-sizing: border-box;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
   body {
-    @apply bg-slate-50 text-slate-900 antialiased selection:bg-emerald-500/20 selection:text-emerald-900;
-    font-family: 'Outfit', sans-serif;
+    @apply antialiased;
+    background-color: var(--bg-base);
+    color: var(--text-primary);
+    font-family: 'Inter', 'Outfit', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  ::selection {
+    background: rgba(37, 99, 235, 0.3);
+    color: #93c5fd;
   }
 }
 
+/* ─── Glassmorphism Utilities ────────────────────────────────────────── */
 @layer utilities {
-  /* Premium Glassmorphism classes */
+
+  /* Core Glass Card */
   .glass-card {
-    @apply bg-white/70 backdrop-blur-md border border-white/20 shadow-lg;
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    box-shadow: var(--shadow-glass), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    border-radius: 16px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   }
-  
+
+  .glass-card:hover {
+    background: var(--glass-bg-hover);
+    border-color: var(--glass-border-hover);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-glass), 0 0 0 1px rgba(255,255,255,0.05), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  }
+
+  /* Dark glass card variant */
   .glass-card-dark {
-    @apply bg-slate-900/80 backdrop-blur-md border border-slate-800/40 shadow-xl;
+    background: rgba(15, 23, 42, 0.85);
+    border: 1px solid rgba(255, 255, 255, 0.10);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    box-shadow: var(--shadow-glass);
+    border-radius: 16px;
   }
 
-  /* Micro animations */
+  /* Lighter glass for sidebar/nav */
+  .glass-nav {
+    background: rgba(2, 6, 23, 0.90);
+    border-right: 1px solid rgba(255, 255, 255, 0.07);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+  }
+
+  /* Solid card on glass bg */
+  .solid-card {
+    background: rgba(15, 23, 42, 0.80);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 16px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+    transition: all 0.2s ease;
+  }
+
+  .solid-card:hover {
+    background: rgba(15, 23, 42, 0.90);
+    border-color: rgba(255, 255, 255, 0.12);
+  }
+
+  /* Hover scale micro-interaction */
   .hover-scale {
-    @apply hover:scale-[1.02] transition-transform duration-300;
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .hover-scale:hover {
+    transform: scale(1.01);
+  }
+
+  /* Hover lift */
+  .hover-lift {
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s ease;
+  }
+  .hover-lift:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4);
+  }
+
+  /* Glow variants */
+  .glow-primary {
+    box-shadow: 0 0 20px var(--primary-glow), 0 0 40px rgba(37, 99, 235, 0.15);
+  }
+  .glow-accent {
+    box-shadow: 0 0 20px var(--accent-glow), 0 0 40px rgba(16, 185, 129, 0.1);
+  }
+  .glow-cyan {
+    box-shadow: 0 0 20px var(--secondary-glow), 0 0 40px rgba(6, 182, 212, 0.1);
+  }
+  .glow-danger {
+    box-shadow: 0 0 20px var(--danger-glow);
+  }
+
+  /* Gradient text */
+  .gradient-text {
+    background: linear-gradient(135deg, #2563eb, #06b6d4, #10b981);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .gradient-text-blue {
+    background: linear-gradient(135deg, #60a5fa, #2563eb);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* Shimmer loading skeleton */
+  .skeleton {
+    background: linear-gradient(90deg,
+      rgba(255,255,255,0.04) 25%,
+      rgba(255,255,255,0.08) 50%,
+      rgba(255,255,255,0.04) 75%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.8s infinite linear;
+    border-radius: 8px;
+  }
+
+  /* Surface backgrounds */
+  .surface-base { background: var(--bg-base); }
+  .surface-elevated { background: var(--bg-elevated); }
+  .surface-overlay { background: var(--bg-overlay); }
+
+  /* Premium scrollbar */
+  .scrollbar-premium::-webkit-scrollbar { width: 5px; height: 5px; }
+  .scrollbar-premium::-webkit-scrollbar-track { background: transparent; }
+  .scrollbar-premium::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 9999px; }
+  .scrollbar-premium::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
+
+  /* Status dot */
+  .status-dot-online {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: #10b981;
+    box-shadow: 0 0 6px rgba(16, 185, 129, 0.6);
+  }
+
+  /* Animated gradient border */
+  .gradient-border {
+    position: relative;
+    border-radius: 16px;
+  }
+  .gradient-border::before {
+    content: '';
+    position: absolute;
+    inset: -1px;
+    border-radius: 17px;
+    background: linear-gradient(135deg, rgba(37,99,235,0.5), rgba(6,182,212,0.3), rgba(16,185,129,0.4));
+    z-index: -1;
+  }
+
+  /* Mesh background */
+  .bg-mesh {
+    background-color: var(--bg-base);
+    background-image:
+      radial-gradient(at 30% 20%, rgba(37, 99, 235, 0.12) 0px, transparent 60%),
+      radial-gradient(at 80% 10%, rgba(6, 182, 212, 0.08) 0px, transparent 50%),
+      radial-gradient(at 10% 80%, rgba(16, 185, 129, 0.06) 0px, transparent 50%),
+      radial-gradient(at 90% 90%, rgba(37, 99, 235, 0.07) 0px, transparent 50%);
   }
 }
 
-/* Custom scrollbars */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+/* ─── Keyframes ──────────────────────────────────────────────────────── */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
 }
 
-::-webkit-scrollbar-track {
-  background: transparent;
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
-::-webkit-scrollbar-thumb {
-  background: rgba(148, 163, 184, 0.3);
-  border-radius: 9999px;
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
-::-webkit-scrollbar-thumb:hover {
-  background: rgba(148, 163, 184, 0.5);
+@keyframes slideUp {
+  from { transform: translateY(24px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
 }
 
-/* ─── Hide Mapbox branding ─────────────────────────────────────────── */
+@keyframes slideInRight {
+  from { transform: translateX(32px); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
 
-/* Mapbox wordmark logo (bottom-left) and attribution (bottom-right) */
+@keyframes slideInLeft {
+  from { transform: translateX(-32px); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes scaleIn {
+  from { transform: scale(0.94); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+@keyframes bounceSubtle {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+
+@keyframes pulseGlow {
+  0%, 100% { box-shadow: 0 0 8px rgba(37, 99, 235, 0.3); }
+  50% { box-shadow: 0 0 24px rgba(37, 99, 235, 0.6), 0 0 48px rgba(6, 182, 212, 0.2); }
+}
+
+@keyframes countUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ─── Animation Utilities ────────────────────────────────────────────── */
+.animate-fade-in { animation: fadeIn 0.4s ease-out forwards; }
+.animate-fade-up { animation: fadeUp 0.5s ease-out forwards; }
+.animate-slide-up { animation: slideUp 0.5s ease-out forwards; }
+.animate-slide-in-right { animation: slideInRight 0.4s ease-out forwards; }
+.animate-slide-in-left { animation: slideInLeft 0.4s ease-out forwards; }
+.animate-scale-in { animation: scaleIn 0.3s ease-out forwards; }
+.animate-count-up { animation: countUp 0.6s ease-out forwards; }
+.animate-pulse-glow { animation: pulseGlow 2s ease-in-out infinite; }
+
+/* Staggered animation delays */
+.delay-75 { animation-delay: 75ms; }
+.delay-100 { animation-delay: 100ms; }
+.delay-150 { animation-delay: 150ms; }
+.delay-200 { animation-delay: 200ms; }
+.delay-300 { animation-delay: 300ms; }
+.delay-400 { animation-delay: 400ms; }
+.delay-500 { animation-delay: 500ms; }
+
+/* ─── Custom Scrollbars (Global) ─────────────────────────────────────── */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.10); border-radius: 9999px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.18); }
+
+/* ─── Mapbox Branding ─────────────────────────────────────────────────── */
 .mapboxgl-ctrl-logo,
 .mapboxgl-ctrl-attrib,
 .mapboxgl-ctrl-attrib-button,
@@ -58,48 +310,108 @@
   pointer-events: none !important;
 }
 
-/* Remove the attribution control wrapper so it leaves no gap */
 .mapboxgl-ctrl-bottom-left .mapboxgl-ctrl-attrib,
 .mapboxgl-ctrl-bottom-right .mapboxgl-ctrl-attrib {
   display: none !important;
 }
 
-/* ─── Mask Google "View on Google Maps" strip inside Street View iframes ── */
-/* We overlay a gradient on the panorama container bottom to visually cover
-   the Google branding strip (cross-origin iframes cannot be styled directly). */
+/* ─── Panorama / Google Street View masks ────────────────────────────── */
 .panorama-google-mask {
   position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
+  bottom: 0; left: 0; right: 0;
   height: 52px;
-  background: linear-gradient(to top, rgba(15, 23, 42, 0.90) 0%, transparent 100%);
+  background: linear-gradient(to top, rgba(2, 6, 23, 0.95) 0%, transparent 100%);
   z-index: 25;
   pointer-events: none;
 }
 
-/* Cover the left-side Google attribution / pegman icon area */
 .panorama-google-mask-left {
   position: absolute;
-  bottom: 0;
-  left: 0;
-  width: 120px;
-  height: 80px;
-  background: rgba(15, 23, 42, 0.90);
+  bottom: 0; left: 0;
+  width: 120px; height: 80px;
+  background: rgba(2, 6, 23, 0.95);
   z-index: 25;
   pointer-events: none;
   border-top-right-radius: 8px;
 }
 
-/* Cover the right-side Google © copyright text */
 .panorama-google-mask-right {
   position: absolute;
-  bottom: 0;
-  right: 0;
-  width: 220px;
-  height: 52px;
-  background: rgba(15, 23, 42, 0.90);
+  bottom: 0; right: 0;
+  width: 220px; height: 52px;
+  background: rgba(2, 6, 23, 0.95);
   z-index: 25;
   pointer-events: none;
   border-top-left-radius: 8px;
+}
+
+/* ─── Form Inputs (Global dark theme) ───────────────────────────────── */
+.input-dark {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  border-radius: 10px;
+  color: #f8fafc;
+  padding: 10px 14px;
+  font-size: 14px;
+  transition: all 0.2s ease;
+  width: 100%;
+  outline: none;
+}
+
+.input-dark::placeholder { color: #475569; }
+
+.input-dark:focus {
+  border-color: rgba(37, 99, 235, 0.6);
+  background: rgba(255, 255, 255, 0.06);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+}
+
+.input-dark:hover:not(:focus) {
+  border-color: rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+/* Select dark */
+.select-dark {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  border-radius: 10px;
+  color: #f8fafc;
+  padding: 10px 14px;
+  font-size: 14px;
+  transition: all 0.2s ease;
+  outline: none;
+  width: 100%;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.select-dark option { background: #0f172a; color: #f8fafc; }
+.select-dark:focus { border-color: rgba(37, 99, 235, 0.6); box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15); }
+
+/* ─── Sidebar Active item ────────────────────────────────────────────── */
+.sidebar-item-active {
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.2), rgba(6, 182, 212, 0.1));
+  border: 1px solid rgba(37, 99, 235, 0.3);
+  color: #93c5fd;
+  box-shadow: 0 0 16px rgba(37, 99, 235, 0.15);
+}
+
+/* ─── Tab Underline ──────────────────────────────────────────────────── */
+.tab-active {
+  color: #60a5fa;
+  border-bottom: 2px solid #2563eb;
+  position: relative;
+}
+
+.tab-active::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, #2563eb, #06b6d4);
+  border-radius: 2px;
+  box-shadow: 0 0 8px rgba(37, 99, 235, 0.6);
 }
