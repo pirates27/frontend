@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowLeft, Calendar, AlertTriangle, CheckCircle, Image, Video,
-  FileText, Map as MapIcon, Clock, Shield, ExternalLink, Send, MessageSquare
+  FileText, Map as MapIcon, Clock, Shield, ExternalLink, Send, MessageSquare, MapPin, Share2, Heart, X, Sparkles, ChevronRight, Maximize
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -14,21 +14,11 @@ import { PanoramaViewer } from '../../components/shared/PanoramaViewer';
 import { cleanDescription } from '../../utils/boundary';
 import { Button } from '../../components/ui/Button';
 import { StatusBadge, Chip } from '../../components/ui/Badge';
-import { GlassCard } from '../../components/ui/GlassCard';
-import { Modal } from '../../components/ui/Modal';
-import { CircularProgress, ProgressBar } from '../../components/ui/ProgressBar';
+import { CircularProgress } from '../../components/ui/ProgressBar';
 import type * as Models from '../../models/property.models';
 
-type TabType = 'spec' | '360' | 'report' | 'map' | 'timeline';
+type TabType = 'overview' | 'ai' | 'location' | 'history';
 type MediaType = 'image' | 'video' | '360';
-
-const tabConfig: { id: TabType; label: string; icon: React.ReactNode }[] = [
-  { id: 'spec', label: 'Specifications', icon: <FileText className="w-4 h-4" /> },
-  { id: '360', label: '360° Tour', icon: <Image className="w-4 h-4" /> },
-  { id: 'report', label: 'AI Trust Score', icon: <Shield className="w-4 h-4" /> },
-  { id: 'map', label: 'Location', icon: <MapIcon className="w-4 h-4" /> },
-  { id: 'timeline', label: 'History', icon: <Clock className="w-4 h-4" /> },
-];
 
 export const PropertyDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -42,10 +32,16 @@ export const PropertyDetail = () => {
   const [aiReport, setAiReport] = useState<Models.AiVerification | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const [activeTab, setActiveTab] = useState<TabType>('spec');
+  const [activeTab, setActiveTab] = useState<TabType>('overview');
   const [activeMedia, setActiveMedia] = useState<MediaType>('image');
   const [activeImageIndex, setActiveImageIndex] = useState(0);
 
+  // Modals
+  const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
+  const [isChatModalOpen, setIsChatModalOpen] = useState(false);
+  const [isDisputeModalOpen, setIsDisputeModalOpen] = useState(false);
+
+  // Forms
   const [visitDate, setVisitDate] = useState('');
   const [visitTime, setVisitTime] = useState('10:30');
   const [visitLoading, setVisitLoading] = useState(false);
@@ -55,13 +51,13 @@ export const PropertyDetail = () => {
   const [fraudDesc, setFraudDesc] = useState('');
   const [fraudLoading, setFraudLoading] = useState(false);
   const [fraudSuccess, setFraudSuccess] = useState(false);
-  const [isDisputeModalOpen, setIsDisputeModalOpen] = useState(false);
-  const [isChatOpen, setIsChatOpen] = useState(true);
 
   const [chatMessages, setChatMessages] = useState<Models.AiMessage[]>([]);
   const [chatInput, setChatInput] = useState('');
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [isSending, setIsSending] = useState(false);
+
+  const [isSaved, setIsSaved] = useState(false); // mock saved state
 
   useEffect(() => { if (id) loadProperty(id); }, [id]);
 
@@ -71,9 +67,22 @@ export const PropertyDetail = () => {
       const p = await propertyService.getPropertyById(propId);
       setProperty(p);
       if (p.threeSixtyImageUrl) setActiveMedia('360');
-      propertyService.getImages(propId).then(setImages).catch(() => {});
+      propertyService.getImages(propId).then(res => { setImages(res); if (!p.threeSixtyImageUrl && res.length > 0) setActiveMedia('image'); }).catch(() => {});
       propertyService.getVideos(propId).then(setVideos).catch(() => {});
-      propertyService.getDocuments(propId).then(setDocuments).catch(() => {});
+      propertyService.getDocuments(propId).then(async (res) => {
+        const validDocs = [];
+        for (const doc of res) {
+          if (doc.fileUrl && doc.fileUrl.includes('cloudinary.com')) {
+            try {
+              const check = await fetch(doc.fileUrl, { method: 'HEAD' });
+              if (check.ok) validDocs.push(doc);
+            } catch {
+              // Ignore docs that fail to load
+            }
+          }
+        }
+        setDocuments(validDocs);
+      }).catch(() => {});
       propertyService.getTimeline(propId).then(setTimeline).catch(() => {});
       propertyService.getAiVerification(propId).then(setAiReport).catch(() => setAiReport(null));
     } catch { navigate('/'); }
@@ -86,7 +95,8 @@ export const PropertyDetail = () => {
     setVisitLoading(true);
     try {
       await propertyService.scheduleVisit(property.id, { visitDate, visitTime: visitTime + ':00' });
-      setVisitSuccess(true); setVisitDate(''); setVisitTime('10:30');
+      setVisitSuccess(true); 
+      setTimeout(() => { setIsScheduleModalOpen(false); setVisitSuccess(false); }, 2000);
     } catch {}
     finally { setVisitLoading(false); }
   };
@@ -98,12 +108,7 @@ export const PropertyDetail = () => {
     try {
       await propertyService.reportFraud(property.id, { reason: fraudReason, description: fraudDesc });
       setFraudSuccess(true); 
-      setFraudReason('Double Listing'); 
-      setFraudDesc('');
-      setTimeout(() => {
-        setIsDisputeModalOpen(false);
-        setFraudSuccess(false);
-      }, 2000);
+      setTimeout(() => { setIsDisputeModalOpen(false); setFraudSuccess(false); }, 2000);
     } catch {}
     finally { setFraudLoading(false); }
   };
@@ -123,22 +128,14 @@ export const PropertyDetail = () => {
       }
       
       const newMsg: Models.AiMessage = {
-        id: Math.random().toString(),
-        conversationId: cid,
-        senderRole: 'USER',
-        content,
-        timestamp: new Date().toISOString(),
-        isActive: true
+        id: Math.random().toString(), conversationId: cid, senderRole: 'USER', content, timestamp: new Date().toISOString(), isActive: true
       };
       setChatMessages(prev => [...prev, newMsg]);
 
       const aiMsg = await propertyService.sendAiMessage(cid, content);
       setChatMessages(prev => [...prev, aiMsg]);
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setIsSending(false);
-    }
+    } catch (e) { console.error(e); } 
+    finally { setIsSending(false); }
   };
 
   const goBack = () => {
@@ -153,13 +150,9 @@ export const PropertyDetail = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-mesh flex items-center justify-center">
-        <div className="flex flex-col items-center gap-4">
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-primary-600 to-cyan-600 flex items-center justify-center animate-pulse">
-            <span className="text-white font-black text-sm">LL</span>
-          </div>
-          <div className="text-white text-sm animate-pulse">Loading property...</div>
-        </div>
+      <div className="h-screen bg-dark-950 flex flex-col items-center justify-center">
+        <CircularProgress value={100} color="primary" size={48} />
+        <p className="text-dark-400 mt-4 text-sm font-semibold animate-pulse">Loading property...</p>
       </div>
     );
   }
@@ -167,373 +160,452 @@ export const PropertyDetail = () => {
   if (!property) return null;
 
   return (
-    <div className="h-screen bg-slate-50 text-slate-900 font-sans flex flex-col overflow-hidden">
+    <div className="min-h-screen bg-dark-950 text-white font-sans flex flex-col pb-32 relative overflow-x-hidden">
       
-      {/* ── TOP NAV ── */}
-      <nav className="shrink-0 h-12 bg-slate-900 text-white flex items-center px-6 border-b border-slate-800 z-30">
-        <div className="w-full flex items-center justify-between">
-          <button onClick={goBack} className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors text-xs font-medium">
-            <ArrowLeft className="w-4 h-4" /> Back to Properties
+      {/* ── ABSOLUTE APP BAR (SCROLLABLE) ── */}
+      <div className="absolute top-0 left-0 right-0 z-50 px-4 pt-4 h-16 flex items-center justify-between">
+        <button onClick={goBack} className="w-10 h-10 rounded-full bg-dark-900/60 backdrop-blur-md flex items-center justify-center border border-white/[0.1] active:scale-95 transition-transform shadow-lg">
+          <ArrowLeft className="w-5 h-5 text-white" />
+        </button>
+        <div className="flex items-center gap-3">
+          <button className="w-10 h-10 rounded-full bg-dark-900/60 backdrop-blur-md flex items-center justify-center border border-white/[0.1] active:scale-95 transition-transform shadow-lg">
+            <Share2 className="w-5 h-5 text-white" />
           </button>
         </div>
-      </nav>
+      </div>
+
+      {/* ── HERO MEDIA SECTION ── */}
+      <div className="relative w-full h-[48vh] bg-dark-800 rounded-b-[25px] overflow-hidden shadow-[0_10px_40px_rgba(0,0,0,0.3)] z-10">
+        {activeMedia === 'image' && images.length > 0 ? (
+          <motion.img key={activeImageIndex} initial={{ opacity: 0 }} animate={{ opacity: 1 }} src={images[activeImageIndex].imageUrl} className="w-full h-full object-cover" />
+        ) : activeMedia === 'video' && videos.length > 0 ? (
+          <video src={videos[0].videoUrl} controls className="w-full h-full object-contain bg-black" />
+        ) : activeMedia === '360' && property?.threeSixtyImageUrl ? (
+          <div className="w-full h-full pointer-events-none overflow-hidden relative">
+            <div className="absolute top-0 left-0 right-0 h-[120%]">
+              <PanoramaViewer url={property.threeSixtyImageUrl} />
+            </div>
+          </div>
+        ) : (
+          <div className="w-full h-full flex items-center justify-center">
+             <MapIcon className="w-12 h-12 text-dark-600" />
+          </div>
+        )}
+
+        {/* Media Controls Overlay */}
+        <div className="absolute bottom-4 left-4 right-4 flex items-end justify-between z-10 pointer-events-none">
+           <div className="flex items-center gap-2 pointer-events-auto">
+              {images.length > 0 && (
+                <button onClick={() => setActiveMedia('image')} className={`px-3 py-1.5 rounded-full text-[10px] font-bold backdrop-blur-md border border-white/20 transition-all ${activeMedia === 'image' ? 'bg-primary-500 text-white' : 'bg-dark-900/60 text-white hover:bg-dark-900/80'}`}>
+                  PHOTOS
+                </button>
+              )}
+           </div>
+           
+           <div className="flex flex-col items-end gap-2 pointer-events-auto">
+              {property?.threeSixtyImageUrl && (
+                <>
+                  <a
+                    href={property.threeSixtyImageUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="bg-emerald-600/95 hover:bg-emerald-500 text-white font-bold text-[10px] px-3 py-1.5 rounded-full shadow-md border border-emerald-500/30 transition-all flex items-center gap-1.5 backdrop-blur-sm whitespace-nowrap"
+                  >
+                    <Maximize className="w-3 h-3" />
+                    Open Street View
+                  </a>
+                  <button onClick={() => setActiveMedia('360')} className={`px-3 py-1.5 rounded-full text-[10px] font-bold backdrop-blur-md border border-white/20 transition-all shadow-lg ${activeMedia === '360' ? 'bg-primary-500 text-white' : 'bg-dark-900/80 text-white'}`}>
+                    360° LIVE
+                  </button>
+                </>
+              )}
+              {activeMedia === 'image' && images.length > 0 && (
+                <div className="px-3 py-1.5 rounded-full bg-dark-900/60 backdrop-blur-md border border-white/20 text-white text-[10px] font-bold">
+                   {activeImageIndex + 1} / {images.length}
+                </div>
+              )}
+           </div>
+        </div>
+      </div>
 
       {/* ── PROPERTY HEADER ── */}
-      <div className="shrink-0 bg-white border-b border-slate-200 px-6 py-3 z-20">
-        <div className="flex flex-wrap items-center justify-between gap-4 max-w-[1600px] mx-auto">
-          <div className="flex flex-col gap-0.5">
-            <h1 className="text-xl font-bold text-slate-900">{property.title}</h1>
-            <p className="text-slate-500 text-xs flex items-center gap-1.5">
-              <MapIcon className="w-3.5 h-3.5" />
-              {property.village}, {property.district}, {property.state}
-            </p>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2">
-              <span className="text-slate-500 font-mono text-[10px] px-2 py-1 bg-slate-100 rounded-md border border-slate-200">
-                #{property.propertyCode || 'LL-17842'}
-              </span>
-              <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-[10px] font-bold">
-                <CheckCircle className="w-3 h-3" /> APPROVED
-              </div>
-              <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-purple-50 border border-purple-200 text-purple-700 text-[10px] font-bold uppercase">
-                <Shield className="w-3 h-3" /> {property.category}
-              </div>
-            </div>
-
-            <div className="h-6 w-px bg-slate-200 mx-1 hidden md:block" />
-
-            {/* AI Trust Score */}
-            <div className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-emerald-200 bg-emerald-50/50">
-              <Shield className="w-4 h-4 text-emerald-600" />
-              <div>
-                <p className="text-[9px] text-emerald-700/70 font-bold uppercase leading-none">AI Trust Score</p>
-                <p className="text-xs text-emerald-700 font-bold leading-none mt-0.5">Verified {aiReport?.aiTrustScore || '88.5'}%</p>
-              </div>
-            </div>
-
-            <button onClick={() => setIsChatOpen(!isChatOpen)} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all border ${isChatOpen ? 'bg-purple-100 text-purple-700 border-purple-200 shadow-inner' : 'bg-white border-purple-200 text-purple-700 hover:bg-purple-50 hover:shadow-sm'}`}>
-              <MessageSquare className="w-3.5 h-3.5" /> AI Assistant
-            </button>
-            
-            <button onClick={() => {}} className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold transition-all shadow-sm">
-              <AlertTriangle className="w-3.5 h-3.5" /> Report a Dispute
-            </button>
-          </div>
+      <div className="p-4 bg-dark-950 border-b border-white/[0.05]">
+        <div className="flex items-center justify-between mb-2">
+           <Chip label={property.category} color="primary" size="xs" />
+           <StatusBadge status={property.status} size="sm" />
+        </div>
+        <h1 className="text-xl font-bold text-white leading-tight mb-1">{property.title}</h1>
+        <p className="text-dark-400 text-xs flex items-center gap-1 mb-3">
+          <MapPin className="w-3.5 h-3.5 shrink-0" />
+          {property.village}, {property.district}, {property.state}
+        </p>
+        <div className="flex items-baseline gap-2">
+           <p className="text-2xl font-black text-white">₹{(property.price).toLocaleString('en-IN')}</p>
         </div>
       </div>
 
-      {/* ── CONTENT GRID ── */}
-      <div className="flex-1 w-full px-6 py-3 max-w-[1600px] mx-auto min-h-0">
-        <div className="grid grid-cols-1 lg:grid-cols-10 gap-3 h-full">
+      {/* ── TABS ── */}
+      <div className="sticky top-14 z-40 bg-dark-950/95 backdrop-blur-xl px-4 pt-4 border-b border-white/[0.05]">
+        {/* Navigation Tabs (Switch Style) */}
+        <div className="flex relative bg-dark-900/60 backdrop-blur-md rounded-[25px] p-1.5 mb-6 border border-white/[0.05]">
+           {['overview', 'ai', 'location', 'history'].map((tab) => (
+             <button key={tab} onClick={() => setActiveTab(tab as any)} className={`flex-1 relative py-2.5 text-[10px] font-bold capitalize transition-colors rounded-[25px] ${activeTab === tab ? 'text-white' : 'text-dark-400 hover:text-white'}`}>
+               {activeTab === tab && <motion.div layoutId="activeTabBg" className="absolute inset-0 bg-gradient-to-tr from-primary-600 to-primary-400 rounded-[25px] shadow-[inset_0_1px_1px_rgba(255,255,255,0.4)] shadow-primary-500/30" />}
+               <span className="relative z-10">{tab === 'ai' ? 'AI Score' : tab}</span>
+             </button>
+           ))}
+        </div>
+      </div>
 
-          {/* ── LEFT COLUMN (50%) ── */}
-          <div className="lg:col-span-5 flex flex-col gap-2 h-full overflow-hidden pr-1">
+      {/* ── TAB CONTENT ── */}
+      <div className="p-4">
+         <AnimatePresence mode="wait">
             
-            {/* Media Viewer — taller */}
-            <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-2 shrink-0">
-              <div className="relative h-[38vh] min-h-[220px] rounded-lg overflow-hidden bg-slate-100 border border-slate-200 mb-2">
-                {activeMedia === 'image' && images.length > 0 ? (
-                  <motion.img key={activeImageIndex} initial={{ opacity: 0 }} animate={{ opacity: 1 }} src={images[activeImageIndex].imageUrl} className="w-full h-full object-cover" />
-                ) : activeMedia === 'video' && videos.length > 0 ? (
-                  <video src={videos[0].videoUrl} controls className="w-full h-full object-contain" />
-                ) : activeMedia === '360' && property?.threeSixtyImageUrl ? (
-                  <div className="w-full h-full pointer-events-auto">
-                    <PanoramaViewer url={property.threeSixtyImageUrl} />
-                  </div>
-                ) : null}
-              </div>
+            {/* OVERVIEW */}
+            {activeTab === 'overview' && (
+              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-6">
+                 {/* Quick Stats Grid */}
+                 <div className="grid grid-cols-2 gap-3">
+                    <div className="glass-card p-3 flex flex-col gap-1">
+                      <span className="text-[10px] font-bold text-dark-400 uppercase">Total Area</span>
+                      <span className="text-sm font-bold text-white">{property.area} <span className="text-[10px] font-normal text-dark-300">acres</span></span>
+                    </div>
+                    <div className="glass-card p-3 flex flex-col gap-1">
+                      <span className="text-[10px] font-bold text-dark-400 uppercase">Survey Number</span>
+                      <span className="text-sm font-bold text-white">{property.surveyNumber}</span>
+                    </div>
+                    <div className="glass-card p-3 flex flex-col gap-1">
+                      <span className="text-[10px] font-bold text-dark-400 uppercase">Property Code</span>
+                      <span className="text-sm font-bold text-white">#{property.propertyCode || 'LL-17842'}</span>
+                    </div>
+                    <div className="glass-card p-3 flex flex-col gap-1">
+                      <span className="text-[10px] font-bold text-dark-400 uppercase">Pincode</span>
+                      <span className="text-sm font-bold text-white">{property.pincode}</span>
+                    </div>
+                 </div>
 
-              {/* Tab strip + thumbnails row */}
-              <div className="flex items-center gap-2">
-                <div className="flex items-center gap-1 shrink-0">
-                  {property?.threeSixtyImageUrl && (
-                    <button onClick={() => setActiveMedia('360')} className={`px-2 py-0.5 rounded text-[9px] font-bold transition-all ${activeMedia === '360' ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
-                      360°
-                    </button>
-                  )}
-                  {images.length > 0 && (
-                    <button onClick={() => setActiveMedia('image')} className={`px-2 py-0.5 rounded text-[9px] font-bold transition-all ${activeMedia === 'image' ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
-                      Photos
-                    </button>
-                  )}
-                  {videos.length > 0 && (
-                    <button onClick={() => setActiveMedia('video')} className={`px-2 py-0.5 rounded text-[9px] font-bold transition-all ${activeMedia === 'video' ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
-                      Video
-                    </button>
-                  )}
+                 {/* Description */}
+                 {cleanDescription(property.description) && (
+                   <div>
+                     <h3 className="text-sm font-bold text-white mb-2">Description</h3>
+                     <p className="text-dark-300 text-xs leading-relaxed">{cleanDescription(property.description)}</p>
+                   </div>
+                 )}
+
+                 {/* Documents */}
+                 {documents.length > 0 && (
+                   <div className="mt-6">
+                     <h3 className="text-sm font-bold text-white mb-3">Legal Documents</h3>
+                     <div className="grid gap-3">
+                       {documents.map(doc => (
+                         <div key={doc.id} className="glass-card p-3 flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                               <div className="w-10 h-10 rounded-xl bg-dark-900 border border-white/[0.05] flex items-center justify-center">
+                                 <FileText className="w-5 h-5 text-primary-400" />
+                               </div>
+                               <div>
+                                 <p className="text-sm font-bold text-white line-clamp-1">{doc.title}</p>
+                                 <p className="text-xs text-dark-400 uppercase tracking-wider">{doc.type}</p>
+                               </div>
+                            </div>
+                            <a href={doc.fileUrl} target="_blank" rel="noreferrer" className="w-10 h-10 flex items-center justify-center text-primary-400 bg-primary-500/10 rounded-full active:scale-95 transition-transform">
+                               <ExternalLink className="w-4 h-4" />
+                            </a>
+                         </div>
+                       ))}
+                     </div>
+                   </div>
+                 )}
+
+                 {/* Report Fraud Button */}
+                 <button onClick={() => setIsDisputeModalOpen(true)} className="w-full mt-4 p-4 rounded-2xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-between active:scale-95 transition-transform">
+                    <div className="flex items-center gap-3">
+                       <div className="w-10 h-10 rounded-full bg-rose-500/20 flex items-center justify-center">
+                         <AlertTriangle className="w-5 h-5 text-rose-500" />
+                       </div>
+                       <div className="text-left">
+                         <h4 className="text-sm font-bold text-rose-500">Report an Issue</h4>
+                         <p className="text-[10px] text-rose-400/70">Found a dispute or fraud?</p>
+                       </div>
+                    </div>
+                    <ChevronRight className="w-5 h-5 text-rose-500/50" />
+                 </button>
+              </motion.div>
+            )}
+
+            {/* AI SCORE */}
+            {activeTab === 'ai' && (
+              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-6">
+                <div className="glass-card p-6 flex flex-col items-center text-center relative overflow-hidden">
+                   <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/10 rounded-full blur-[50px]" />
+                   <Shield className="w-8 h-8 text-emerald-400 mb-4" />
+                   <h2 className="text-lg font-bold text-white mb-1">AI Trust Verification</h2>
+                   <p className="text-xs text-dark-400 mb-6">Powered by LandLens AI</p>
+                   
+                   <div className="relative mb-4 flex justify-center">
+                     <CircularProgress value={aiReport?.aiTrustScore || 88} color="accent" size={128} strokeWidth={8} sublabel="SCORE" />
+                   </div>
+                   
+                   <p className="text-xs text-emerald-400 font-semibold bg-emerald-500/10 px-3 py-1.5 rounded-full border border-emerald-500/20">
+                     Highly Reliable Property
+                   </p>
                 </div>
-                {images.length > 1 && activeMedia === 'image' && (
-                  <div className="flex items-center gap-1 overflow-hidden flex-1">
-                    {images.map((img, idx) => (
-                      <div key={idx} onClick={() => { setActiveImageIndex(idx); setActiveMedia('image'); }} className={`w-12 h-8 rounded-md overflow-hidden border-2 cursor-pointer shrink-0 transition-all ${activeImageIndex === idx ? 'border-slate-900' : 'border-transparent hover:border-slate-300'}`}>
-                        <img src={img.thumbnailUrl} className="w-full h-full object-cover" alt="" />
-                      </div>
-                    ))}
-                    {images.length > 5 && (
-                      <div className="w-10 h-8 rounded-md bg-slate-900 text-white flex items-center justify-center font-bold text-[9px] shrink-0 cursor-pointer">
-                        +{images.length - 5}
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
 
-            {/* Bottom row: Map LEFT · Stats+Location+Description RIGHT */}
-            <div className="flex gap-2 flex-1 min-h-0 mb-2">
-
-              {/* Map — left half */}
-              <div className="bg-white border border-slate-200 rounded-lg p-2 shadow-sm flex flex-col w-1/2 min-h-0">
-                <div className="flex items-center justify-between mb-1">
-                  <h3 className="text-slate-900 font-bold text-[11px]">Location & Boundary</h3>
-                  <div className="flex items-center gap-1 text-slate-400 text-[8px]"><MapIcon className="w-2.5 h-2.5"/> Mapbox</div>
+                <div className="space-y-3">
+                   <h3 className="text-sm font-bold text-white">Risk Metrics</h3>
+                   <div className="grid gap-3">
+                      <div className="glass-card p-4 flex items-center justify-between">
+                         <span className="text-xs font-semibold text-white">Forgery Risk</span>
+                         <span className="text-xs font-bold text-emerald-400">Low ({(aiReport?.forgeryScore || 12).toFixed(1)}%)</span>
+                      </div>
+                      <div className="glass-card p-4 flex items-center justify-between">
+                         <span className="text-xs font-semibold text-white">Overlap Risk</span>
+                         <span className="text-xs font-bold text-emerald-400">Low ({(aiReport?.overlapScore || 5).toFixed(1)}%)</span>
+                      </div>
+                      <div className="glass-card p-4 flex items-center justify-between">
+                         <span className="text-xs font-semibold text-white">Owner Match</span>
+                         <span className="text-xs font-bold text-emerald-400">Verified Match</span>
+                      </div>
+                   </div>
                 </div>
-                <div className="flex-1 rounded-md overflow-hidden border border-slate-200 relative">
+              </motion.div>
+            )}
+
+            {/* LOCATION */}
+            {activeTab === 'location' && (
+              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-4">
+                <div className="h-[400px] rounded-2xl overflow-hidden border border-white/[0.05] relative shadow-lg">
                   <Map mode="detail" properties={[property]} onLocationSelected={() => {}} />
-                  <div className="absolute top-1.5 right-1.5 flex gap-0.5 bg-white rounded shadow-sm border border-slate-200 p-0.5 z-10 pointer-events-none">
-                    <div className="px-1.5 py-0.5 text-[8px] font-semibold bg-slate-100 text-slate-800 rounded-sm">Map</div>
-                    <div className="px-1.5 py-0.5 text-[8px] font-semibold text-slate-500 rounded-sm">Satellite</div>
-                  </div>
-                  <div className="absolute bottom-1.5 left-1.5 bg-slate-900/90 text-white text-[8px] font-bold px-1.5 py-0.5 rounded flex items-center gap-1 z-10 pointer-events-none">
-                    <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full"/>
-                    Boundary (Exact)
+                  <div className="absolute bottom-4 left-4 bg-dark-900/90 backdrop-blur-md px-3 py-1.5 rounded-lg border border-white/10 text-[10px] font-bold text-emerald-400 flex items-center gap-1.5">
+                    <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse" /> Exact Boundary
                   </div>
                 </div>
-              </div>
+              </motion.div>
+            )}
 
-              {/* Stats + Location + Description — right half */}
-              <div className="flex flex-col gap-2 w-1/2 min-h-0">
-
-                {/* Quick Stats */}
-                <div className="grid grid-cols-2 gap-1.5 shrink-0">
-                  <div className="bg-white border border-slate-200 rounded-lg px-2 py-1.5 flex flex-col shadow-sm">
-                    <p className="text-slate-400 text-[7px] font-bold uppercase tracking-wide">Area / Size</p>
-                    <p className="text-slate-900 font-bold text-[11px] leading-tight">{property.area} <span className="text-[8px] font-normal text-slate-500">acres</span></p>
-                  </div>
-                  <div className="bg-white border border-slate-200 rounded-lg px-2 py-1.5 flex flex-col shadow-sm">
-                    <p className="text-slate-400 text-[7px] font-bold uppercase tracking-wide">Price</p>
-                    <p className="text-slate-900 font-bold text-[11px] leading-tight">₹{(property.price).toLocaleString('en-IN')}</p>
-                  </div>
-                  <div className="bg-white border border-slate-200 rounded-lg px-2 py-1.5 flex flex-col shadow-sm">
-                    <p className="text-slate-400 text-[7px] font-bold uppercase tracking-wide">Survey No.</p>
-                    <p className="text-slate-900 font-bold text-[11px] leading-tight">{property.surveyNumber}</p>
-                  </div>
-                  <div className="bg-white border border-slate-200 rounded-lg px-2 py-1.5 flex flex-col shadow-sm">
-                    <p className="text-slate-400 text-[7px] font-bold uppercase tracking-wide">Category</p>
-                    <p className="text-slate-900 font-bold text-[11px] leading-tight">{property.category}</p>
-                  </div>
+            {/* LOCATION */}
+            {activeTab === 'location' && (
+              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-6">
+                <h3 className="text-lg font-bold text-white mb-4">Location Details</h3>
+                <div className="w-full h-64 rounded-2xl overflow-hidden border border-white/[0.05]">
+                  <Map latitude={property.latitude} longitude={property.longitude} />
                 </div>
-
-                {/* Location */}
-                <div className="bg-white border border-slate-200 rounded-lg px-2 py-1.5 shrink-0 shadow-sm">
-                  <div className="flex flex-col gap-1">
-                    <div className="flex items-center gap-1 text-[9px]"><span className="font-semibold text-slate-700">State:</span> <span className="text-slate-600">{property.state}</span></div>
-                    <div className="flex items-center gap-1 text-[9px]"><span className="font-semibold text-slate-700">District:</span> <span className="text-slate-600">{property.district}</span></div>
-                    <div className="flex items-center gap-1 text-[9px]"><span className="font-semibold text-slate-700">Pincode:</span> <span className="text-slate-600">{property.pincode}</span></div>
-                  </div>
+                <div className="glass-card p-4">
+                  <h4 className="text-xs font-bold text-dark-400 uppercase tracking-wider mb-2">Address Details</h4>
+                  <p className="text-sm text-white font-semibold">{property.village}</p>
+                  <p className="text-xs text-dark-300">{property.district}, {property.state} {property.pincode}</p>
                 </div>
+              </motion.div>
+            )}
 
-                {/* Description */}
-                {cleanDescription(property.description) && (
-                  <div className="bg-white border border-slate-200 rounded-lg px-2 py-1.5 shadow-sm flex-1 overflow-hidden">
-                    <h3 className="text-slate-700 font-bold mb-1 text-[9px] uppercase tracking-wide">Description</h3>
-                    <p className="text-slate-600 text-[9px] leading-snug line-clamp-4">{cleanDescription(property.description)}</p>
-                  </div>
-                )}
-              </div>
-
-            </div>
-
-          </div>
-
-          {/* ── MIDDLE COLUMN (20%) ── */}
-          <div className="lg:col-span-2 flex flex-col gap-2 h-full overflow-hidden pr-1">
-
-            {/* Schedule Site Visit — moved to top */}
-            <div className="bg-white border border-slate-200 rounded-lg p-3 shadow-sm shrink-0">
-              <div className="flex items-center gap-1.5 mb-1">
-                <Calendar className="w-3.5 h-3.5 text-emerald-600" />
-                <h3 className="text-slate-900 font-bold text-[11px]">Schedule Visit</h3>
-              </div>
-              
-              <form onSubmit={handleScheduleVisit} className="space-y-2">
-                <div className="flex gap-2">
-                  <div className="flex-1">
-                    <input type="date" required value={visitDate} onChange={e => setVisitDate(e.target.value)} min={new Date().toISOString().split('T')[0]} className="w-full border border-slate-300 rounded px-1.5 py-1 text-[10px] text-slate-800 focus:outline-none focus:border-emerald-500" />
-                  </div>
-                  <div className="flex-1">
-                    <input type="time" required value={visitTime} onChange={e => setVisitTime(e.target.value)} className="w-full border border-slate-300 rounded px-1.5 py-1 text-[10px] text-slate-800 focus:outline-none focus:border-emerald-500" />
-                  </div>
-                </div>
+            {/* HISTORY */}
+            {activeTab === 'history' && (
+              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-6">
+                <h3 className="text-lg font-bold text-white mb-4">Verification Timeline</h3>
                 
-                {visitSuccess && (
-                  <div className="p-1.5 bg-emerald-50 border border-emerald-200 rounded flex items-center gap-1 text-emerald-700 text-[9px]">
-                    <CheckCircle className="w-3 h-3 shrink-0" /> Sent!
-                  </div>
-                )}
-
-                <button type="submit" disabled={!visitDate || !visitTime || visitLoading} className="w-full bg-emerald-700 hover:bg-emerald-800 text-white font-semibold py-1 rounded text-[10px] transition-colors shadow-sm disabled:opacity-50">
-                  {visitLoading ? 'Wait...' : 'Request'}
-                </button>
-              </form>
-            </div>
-
-            {/* Verification Timeline */}
-            <div className="bg-white border border-slate-200 rounded-lg p-3 shadow-sm flex flex-col flex-1 min-h-0">
-              <h3 className="text-slate-900 font-bold mb-2 text-[11px]">Verification Timeline</h3>
-              
-              <div className="relative pl-5 space-y-2 flex-1 overflow-y-auto scrollbar-premium">
-                <div className="absolute left-[7px] top-1 bottom-1 w-px bg-slate-200" />
-                
-                {timeline.length > 0 ? timeline.map((t, idx) => (
-                  <div key={idx} className="relative">
-                    <div className="absolute -left-[24px] top-0 w-4 h-4 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center z-10">
-                      <CheckCircle className="w-2.5 h-2.5 text-emerald-600" />
-                    </div>
-                    <h4 className="text-slate-900 text-[10px] font-bold leading-none">{t.action}</h4>
-                    <p className="text-slate-500 text-[8px] mt-0.5">{new Date(t.timestamp || Date.now()).toLocaleDateString()}</p>
-                    <p className="text-slate-600 text-[9px] leading-tight mt-0.5 truncate">{t.remarks}</p>
-                  </div>
-                )) : (
-                  <>
-                    <div className="relative">
-                      <div className="absolute -left-[24px] top-0 w-4 h-4 rounded-full bg-emerald-100 border border-emerald-200 flex items-center justify-center z-10">
-                        <CheckCircle className="w-2 h-2 text-emerald-600" />
-                      </div>
-                      <h4 className="text-slate-900 text-[10px] font-bold leading-none">Property Listed</h4>
-                      <p className="text-slate-500 text-[8px] mt-0.5">May 10, 2024</p>
-                    </div>
-                    <div className="relative">
-                      <div className="absolute -left-[24px] top-0 w-4 h-4 rounded-full bg-blue-100 border border-blue-200 flex items-center justify-center z-10">
-                        <CheckCircle className="w-2 h-2 text-blue-600" />
-                      </div>
-                      <h4 className="text-slate-900 text-[10px] font-bold leading-none">Approved</h4>
-                      <p className="text-slate-500 text-[8px] mt-0.5">May 20, 2024</p>
-                    </div>
-                  </>
-                )}
-              </div>
-            </div>
-
-            {/* Report Dispute */}
-            <div className="bg-white border border-rose-200 rounded-lg p-3 shadow-sm relative overflow-hidden shrink-0 mb-2">
-              <div className="flex items-center gap-1.5 mb-1">
-                <AlertTriangle className="w-3.5 h-3.5 text-rose-500" />
-                <h3 className="text-rose-600 font-bold text-[11px]">Report Fraud</h3>
-              </div>
-              
-              <form onSubmit={handleSubmitFraud} className="space-y-2">
-                <select value={fraudReason} onChange={e => setFraudReason(e.target.value)} className="w-full border border-slate-300 rounded px-1.5 py-1 text-[10px] text-slate-800 bg-white focus:outline-none focus:border-rose-500">
-                  <option value="Double Listing">Select reason</option>
-                  <option value="Double Listing">Overlapped Boundary</option>
-                  <option value="Forgery Name">Name Mismatch</option>
-                </select>
-                <textarea rows={1} required value={fraudDesc} onChange={e => setFraudDesc(e.target.value)} placeholder="Details..." className="w-full border border-slate-300 rounded px-1.5 py-1 text-[10px] text-slate-800 resize-none focus:outline-none focus:border-rose-500" />
-                
-                {fraudSuccess && (
-                  <div className="p-1.5 bg-rose-50 border border-rose-200 rounded flex items-center gap-1 text-rose-700 text-[9px]">
-                    <AlertTriangle className="w-3 h-3 shrink-0" /> Reported!
-                  </div>
-                )}
-
-                <button type="submit" disabled={!fraudReason || !fraudDesc || fraudLoading} className="w-full bg-rose-600 hover:bg-rose-700 text-white font-semibold py-1 rounded text-[10px] transition-colors shadow-sm disabled:opacity-50">
-                  {fraudLoading ? 'Wait...' : 'Submit'}
-                </button>
-              </form>
-            </div>
-
-          </div>
-
-          {/* ── RIGHT COLUMN (30%) ── */}
-          {isChatOpen && (
-            <div className="lg:col-span-3 h-full pb-4">
-              <div className="bg-white border border-slate-200 rounded-2xl flex flex-col h-full shadow-sm overflow-hidden">
-                
-                {/* Chat Header */}
-                <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between bg-white shrink-0">
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-7 h-7 rounded-full bg-purple-50 flex items-center justify-center">
-                      <MessageSquare className="w-3.5 h-3.5 text-purple-600" />
-                    </div>
-                    <div>
-                      <h4 className="text-slate-900 text-xs font-bold">AI Assistant</h4>
-                      <p className="text-slate-500 text-[9px]">Property: {property.title} (#{property.propertyCode || 'LL-17842'})</p>
-                    </div>
-                  </div>
-                  <button onClick={() => setIsChatOpen(false)} className="text-slate-400 hover:text-slate-600 p-1">
-                    <ArrowLeft className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-
-                {/* Messages Area */}
-                <div className="flex-1 p-4 overflow-y-auto space-y-3 bg-slate-50/50 flex flex-col scrollbar-premium">
-                  {/* Initial Greeting */}
-                  {chatMessages.length === 0 && (
-                    <div className="flex justify-start">
-                      <div className="max-w-[90%] px-3 py-2 rounded-xl text-[11px] leading-relaxed bg-white border border-slate-200 text-slate-700 rounded-tl-sm shadow-sm">
-                        <p>👋 Hello! I'm your AI Assistant for this property. Ask me anything about land details, legal status, market rates, nearby amenities, or any other information you need.</p>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Suggested Chips (Only show if no messages yet) */}
-                  {chatMessages.length === 0 && (
-                    <div className="space-y-1.5 mt-1">
-                      <button onClick={() => setChatInput('Are there any active disputes on this survey number?')} className="block text-left w-auto px-3 py-1.5 border border-purple-200 bg-white hover:bg-purple-50 text-purple-700 text-[10px] rounded-lg shadow-sm transition-colors">
-                        Are there any active disputes on this survey number?
-                      </button>
-                      <button onClick={() => setChatInput('What is the local market rate per acre?')} className="block text-left w-auto px-3 py-1.5 border border-purple-200 bg-white hover:bg-purple-50 text-purple-700 text-[10px] rounded-lg shadow-sm transition-colors">
-                        What is the local market rate per acre?
-                      </button>
-                    </div>
-                  )}
-
-                  {chatMessages.map(msg => (
-                    <div key={msg.id} className={`flex ${msg.senderRole === 'USER' ? 'justify-end' : 'justify-start'}`}>
-                      <div className={`max-w-[90%] px-3 py-2 rounded-xl text-[11px] leading-relaxed shadow-sm ${
-                        msg.senderRole === 'USER'
-                          ? 'bg-purple-100 text-purple-900 rounded-tr-sm border border-purple-200'
-                          : 'bg-white border border-slate-200 text-slate-700 rounded-tl-sm'
-                      }`}>
-                        <div className="markdown-body !text-inherit">
-                          <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
+                <div className="relative pl-12 space-y-8 mt-2">
+                  {/* Vertical line connecting ticks */}
+                  <div className="absolute left-[11px] top-3 bottom-0 w-[2px] bg-emerald-500/40" />
                   
-                  {isSending && (
-                    <div className="flex justify-start">
-                      <div className="px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-500 text-[11px] rounded-tl-sm shadow-sm flex items-center gap-1.5">
-                        <CircularProgress value={100} size={14} strokeWidth={2} color="primary" /> AI is thinking...
+                  {timeline.length > 0 ? timeline.map((t, idx) => (
+                    <div key={idx} className="relative z-10">
+                      {/* Tick mark */}
+                      <div className="absolute -left-[48px] top-0 w-6 h-6 rounded-full bg-dark-950 border-2 border-emerald-500 flex items-center justify-center shadow-lg shadow-dark-950 z-10">
+                        <CheckCircle className="w-3 h-3 text-emerald-500" />
                       </div>
+                      <h4 className="text-sm font-bold text-white leading-tight">{t.action || t.title}</h4>
+                      <p className="text-dark-400 text-[10px] font-semibold mt-1">{new Date(t.timestamp || t.date || Date.now()).toLocaleDateString()}</p>
+                      {(t.remarks || t.description) && (
+                        <p className="text-dark-300 text-xs mt-2 bg-dark-800/50 p-3 rounded-xl border border-white/[0.02]">{t.remarks || t.description}</p>
+                      )}
+                    </div>
+                  )) : (
+                    <div className="py-8 text-center bg-white/[0.02] rounded-2xl border border-white/[0.05]">
+                       <Clock className="w-8 h-8 text-dark-600 mx-auto mb-2" />
+                       <p className="text-sm font-bold text-dark-400">No History Found</p>
                     </div>
                   )}
                 </div>
+              </motion.div>
+            )}
 
-                {/* Chat Input */}
-                <div className="p-3 bg-white border-t border-slate-100 shrink-0">
-                  <div className="flex items-center gap-1.5 border border-slate-200 rounded-xl p-1 shadow-sm focus-within:border-purple-400 focus-within:ring-1 focus-within:ring-purple-400">
-                    <input
-                      type="text" value={chatInput} onChange={e => setChatInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && sendMessage()}
-                      placeholder="Ask anything about this property..."
-                      className="flex-1 bg-transparent px-2 py-1.5 text-[11px] text-slate-800 focus:outline-none"
-                    />
-                    <button onClick={sendMessage} disabled={isSending || !chatInput.trim()} className="w-7 h-7 rounded-lg bg-purple-600 hover:bg-purple-700 text-white flex items-center justify-center disabled:opacity-50 transition-colors shrink-0">
-                      <Send className="w-3 h-3" />
-                    </button>
-                  </div>
-                  <p className="text-center text-[9px] text-slate-400 mt-1.5">AI responses are for informational purposes only.</p>
-                </div>
+         </AnimatePresence>
+      </div>
 
-              </div>
-            </div>
-          )}
-
+      {/* ── FLOATING BOTTOM BAR ── */}
+      <div className="fixed bottom-0 left-0 right-0 px-4 py-3 pb-4 bg-dark-950/95 backdrop-blur-xl border-t border-white/[0.05] z-40 rounded-t-[25px] shadow-[0_-10px_40px_rgba(0,0,0,0.5)]">
+        <div className="flex gap-2 max-w-md mx-auto">
+          <button onClick={() => setIsChatModalOpen(true)} className="flex-1 h-9 rounded-xl bg-white/[0.05] border border-white/[0.1] text-white font-bold text-xs flex items-center justify-center gap-1.5 active:scale-95 transition-transform shadow-md">
+            <Sparkles className="w-3.5 h-3.5 text-primary-400" /> Ask AI
+          </button>
+          <button onClick={() => setIsScheduleModalOpen(true)} className="flex-[1.5] h-9 rounded-xl bg-primary-600 text-white font-bold text-xs flex items-center justify-center gap-1.5 active:scale-95 transition-transform shadow-md shadow-primary-500/20">
+            <Calendar className="w-3.5 h-3.5" /> Schedule Visit
+          </button>
         </div>
       </div>
+
+      {/* ── FULL SCREEN MODALS ── */}
+      
+      {/* Schedule Visit Modal */}
+      <AnimatePresence>
+        {isScheduleModalOpen && (
+          <>
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[50]" onClick={() => setIsScheduleModalOpen(false)} />
+            <motion.div initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }} transition={{ type: 'spring', damping: 25, stiffness: 200 }} className="fixed inset-x-0 bottom-0 max-h-[90vh] z-[60] bg-[#090C15] rounded-t-3xl flex flex-col shadow-[0_-10px_40px_rgba(0,0,0,0.5)]">
+            <div className="flex items-center justify-between p-4 border-b border-white/[0.05]">
+               <h2 className="text-lg font-bold text-white">Schedule Visit</h2>
+               <button onClick={() => setIsScheduleModalOpen(false)} className="w-10 h-10 rounded-full bg-white/[0.05] flex items-center justify-center"><X className="w-5 h-5 text-white"/></button>
+            </div>
+            <div className="p-6 flex-1 overflow-y-auto pb-safe">
+               <div className="glass-card p-4 flex gap-4 items-center mb-8">
+                 <div>
+                   <h3 className="text-sm font-bold text-white line-clamp-1">{property.title}</h3>
+                   <p className="text-xs text-primary-400 font-bold mt-1">₹{property.price.toLocaleString('en-IN')}</p>
+                 </div>
+               </div>
+               
+               <form onSubmit={handleScheduleVisit} className="space-y-6">
+                 <div>
+                   <label className="block text-xs font-bold text-dark-400 uppercase mb-2 ml-1">Select Date</label>
+                   <input type="date" required value={visitDate} onChange={e => setVisitDate(e.target.value)} min={new Date().toISOString().split('T')[0]} className="w-full h-14 rounded-2xl bg-dark-900 border border-white/[0.1] px-4 text-white outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500 transition-all" />
+                 </div>
+                 <div>
+                   <label className="block text-xs font-bold text-dark-400 uppercase mb-2 ml-1">Select Time</label>
+                   <input type="time" required value={visitTime} onChange={e => setVisitTime(e.target.value)} className="w-full h-14 rounded-2xl bg-dark-900 border border-white/[0.1] px-4 text-white outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500 transition-all" />
+                 </div>
+                 
+                 {visitSuccess && (
+                    <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl flex items-center gap-3">
+                      <CheckCircle className="w-5 h-5 text-emerald-500" />
+                      <div>
+                        <p className="text-sm font-bold text-emerald-500">Visit Scheduled!</p>
+                        <p className="text-xs text-emerald-400/80">We'll confirm with you shortly.</p>
+                      </div>
+                    </motion.div>
+                 )}
+                 
+                 <button type="submit" disabled={!visitDate || !visitTime || visitLoading} className="w-full h-14 rounded-2xl bg-primary-600 text-white font-bold disabled:opacity-50 transition-all active:scale-95 shadow-lg shadow-primary-500/20">
+                   {visitLoading ? 'Scheduling...' : 'Confirm Request'}
+                 </button>
+               </form>
+            </div>
+          </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* AI Chat Modal */}
+      <AnimatePresence>
+        {isChatModalOpen && (
+          <>
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[50]" onClick={() => setIsChatModalOpen(false)} />
+            <motion.div initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }} transition={{ type: 'spring', damping: 25, stiffness: 200 }} className="fixed inset-x-0 bottom-0 h-[85vh] z-[60] bg-[#090C15] rounded-t-3xl flex flex-col shadow-[0_-10px_40px_rgba(0,0,0,0.5)] overflow-hidden">
+            <div className="flex items-center justify-between p-4 border-b border-white/[0.05] bg-dark-900/80 backdrop-blur-xl">
+               <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-primary-500/20 flex items-center justify-center">
+                    <Sparkles className="w-5 h-5 text-primary-400" />
+                  </div>
+                  <div>
+                    <h2 className="text-sm font-bold text-white">AI Assistant</h2>
+                    <p className="text-[10px] text-dark-400">Ask about {property.title}</p>
+                  </div>
+               </div>
+               <button onClick={() => setIsChatModalOpen(false)} className="w-10 h-10 rounded-full bg-white/[0.05] flex items-center justify-center"><X className="w-5 h-5 text-white"/></button>
+            </div>
+            
+            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+              {chatMessages.length === 0 && (
+                <div className="flex justify-start">
+                  <div className="max-w-[85%] p-4 rounded-2xl rounded-tl-sm bg-dark-800 border border-white/[0.05] text-white text-sm shadow-lg">
+                    👋 Hi! I can help you understand the legal status, market rates, or nearby amenities for this property. What would you like to know?
+                  </div>
+                </div>
+              )}
+              {chatMessages.length === 0 && (
+                 <div className="space-y-2 mt-2">
+                   <button onClick={() => setChatInput('Are there any active disputes on this survey number?')} className="w-full text-left p-3 rounded-xl border border-primary-500/30 bg-primary-500/5 text-primary-300 text-xs font-semibold">
+                     Are there any active disputes on this survey number?
+                   </button>
+                   <button onClick={() => setChatInput('What is the local market rate per acre?')} className="w-full text-left p-3 rounded-xl border border-primary-500/30 bg-primary-500/5 text-primary-300 text-xs font-semibold">
+                     What is the local market rate per acre?
+                   </button>
+                 </div>
+              )}
+
+              {chatMessages.map(msg => (
+                <div key={msg.id} className={`flex ${msg.senderRole === 'USER' ? 'justify-end' : 'justify-start'}`}>
+                  <div className={`max-w-[85%] p-4 rounded-2xl text-sm shadow-lg ${msg.senderRole === 'USER' ? 'bg-primary-600 text-white rounded-tr-sm' : 'bg-dark-800 text-white rounded-tl-sm border border-white/[0.05]'}`}>
+                     <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
+                  </div>
+                </div>
+              ))}
+              {isSending && (
+                 <div className="flex justify-start">
+                  <div className="px-4 py-3 rounded-2xl rounded-tl-sm bg-dark-800 border border-white/[0.05] flex items-center gap-2">
+                    <CircularProgress value={100} size={16} color="primary" /> <span className="text-xs text-dark-400">AI is thinking...</span>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="p-4 bg-dark-900 border-t border-white/[0.05] pb-safe">
+              <div className="flex gap-2">
+                <input type="text" value={chatInput} onChange={e => setChatInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && sendMessage()} placeholder="Ask anything..." className="input-dark flex-1 !rounded-full" />
+                <button onClick={sendMessage} disabled={isSending || !chatInput.trim()} className="w-12 h-12 rounded-full bg-primary-600 flex items-center justify-center shrink-0 text-white hover:bg-primary-500 transition-colors shadow-lg shadow-primary-500/20 disabled:opacity-50">
+                  <Send className="w-5 h-5 ml-1" />
+                </button>
+              </div>
+            </div>
+          </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+      
+      {/* Dispute Modal */}
+      <AnimatePresence>
+        {isDisputeModalOpen && (
+          <>
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[50]" onClick={() => setIsDisputeModalOpen(false)} />
+            <motion.div initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }} transition={{ type: 'spring', damping: 25, stiffness: 200 }} className="fixed inset-x-0 bottom-0 max-h-[90vh] z-[60] bg-[#090C15] rounded-t-3xl flex flex-col shadow-[0_-10px_40px_rgba(0,0,0,0.5)]">
+            <div className="flex items-center justify-between p-4 border-b border-white/[0.05]">
+               <h2 className="text-lg font-bold text-white text-rose-500">Report Fraud</h2>
+               <button onClick={() => setIsDisputeModalOpen(false)} className="w-10 h-10 rounded-full bg-white/[0.05] flex items-center justify-center"><X className="w-5 h-5 text-white"/></button>
+            </div>
+            <div className="p-6 flex-1 overflow-y-auto pb-safe">
+               <form onSubmit={handleSubmitFraud} className="space-y-6">
+                 <div>
+                   <label className="block text-xs font-bold text-dark-400 uppercase mb-2 ml-1">Reason for reporting</label>
+                   <select value={fraudReason} onChange={e => setFraudReason(e.target.value)} className="w-full h-14 rounded-2xl bg-dark-900 border border-white/[0.1] px-4 text-white outline-none focus:border-rose-500 focus:ring-1 focus:ring-rose-500 transition-all appearance-none">
+                     <option value="Double Listing">Double Listing</option>
+                     <option value="Overlapped Boundary">Overlapped Boundary</option>
+                     <option value="Name Mismatch">Name Mismatch</option>
+                   </select>
+                 </div>
+                 <div>
+                   <label className="block text-xs font-bold text-dark-400 uppercase mb-2 ml-1">Details</label>
+                   <textarea required value={fraudDesc} onChange={e => setFraudDesc(e.target.value)} rows={4} className="w-full rounded-2xl bg-dark-900 border border-white/[0.1] p-4 text-white outline-none focus:border-rose-500 focus:ring-1 focus:ring-rose-500 transition-all resize-none" placeholder="Please provide more details..." />
+                 </div>
+                 
+                 {fraudSuccess && (
+                    <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="p-4 bg-rose-500/10 border border-rose-500/20 rounded-2xl flex items-center gap-3">
+                      <AlertTriangle className="w-5 h-5 text-rose-500" />
+                      <div>
+                        <p className="text-sm font-bold text-rose-500">Report Submitted</p>
+                        <p className="text-xs text-rose-400/80">Our officers will investigate this property.</p>
+                      </div>
+                    </motion.div>
+                 )}
+                 
+                 <button type="submit" disabled={!fraudReason || !fraudDesc || fraudLoading} className="w-full h-14 rounded-2xl bg-rose-600 text-white font-bold disabled:opacity-50 transition-all active:scale-95 shadow-lg shadow-rose-500/20">
+                   {fraudLoading ? 'Submitting...' : 'Submit Report'}
+                 </button>
+               </form>
+            </div>
+          </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
     </div>
   );
 };

@@ -1,93 +1,65 @@
-import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useEffect, useState, useRef } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { propertyService } from '../../services/property.service';
 import { authService } from '../../services/auth.service';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Map } from '../../components/shared/Map';
-import { DashboardLayout } from '../../components/layout/DashboardLayout';
-import { buyerNavItems } from '../../components/layout/Sidebar';
-import { GlassCard } from '../../components/ui/GlassCard';
 import { Button } from '../../components/ui/Button';
 import { StatusBadge, Chip } from '../../components/ui/Badge';
 import { SkeletonCard } from '../../components/ui/Skeleton';
 import { EmptyState } from '../../components/ui/EmptyState';
+import { CircularProgress } from '../../components/ui/ProgressBar';
 import type { Property, PropertyVisit, AiConversation, AiMessage, Notification, PropertyImage, PropertyVideo, PropertyDocument, AiVerification } from '../../models/property.models';
 import {
   Search, Calendar, MessageSquare, Bell, Map as MapIcon,
   Heart, ExternalLink, Clock, CheckCircle, Send, Plus,
-  Filter, LayoutGrid, RefreshCw, X, Shield, Play, Video, FileText
+  Filter, User, Settings, LogOut, ChevronRight, Home, Bookmark, 
+  RefreshCw, X, Shield, Play, Video, FileText, ArrowLeft, Star, MapPin, Menu
 } from 'lucide-react';
 
-const PropertyCard = React.memo(({ p, isBookmarked, toggleBookmark, onClick, isSelected }: { p: Property; isBookmarked: (id: string) => boolean; toggleBookmark: (id: string) => void; onClick: () => void; isSelected: boolean }) => (
-  <motion.div
-    layout
-    initial={{ opacity: 0, scale: 0.97 }}
-    animate={{ opacity: 1, scale: 1 }}
-    onClick={onClick}
-    className={`glass-card overflow-hidden flex flex-col group hover:-translate-y-1 transition-all duration-300 cursor-pointer ${isSelected ? '!border-primary-500/40 shadow-[0_0_20px_rgba(37,99,235,0.15)]' : ''}`}
-  >
-    {/* Thumbnail */}
-    <div className="relative h-36 bg-dark-800 overflow-hidden shrink-0">
-      {p.threeSixtyImageUrl ? (
-        <>
-          <iframe src={p.threeSixtyImageUrl} style={{ width: '117.64%', height: '117.64%', border: 'none', position: 'absolute', top: 0, left: 0 }} className="pointer-events-none" allow="accelerometer; gyroscope" />
-          <div className="absolute top-2 left-2 flex items-center gap-1 bg-dark-900/80 px-2 py-0.5 rounded-full backdrop-blur-sm">
-            <span className="w-1.5 h-1.5 bg-accent-400 rounded-full animate-ping" />
-            <span className="text-white text-[8px] font-bold">360° LIVE</span>
+const MobilePropertyCard = ({ p, vertical = false, isHidden = false }: { p: Property, vertical?: boolean, isHidden?: boolean }) => {
+  const navigate = useNavigate();
+  return (
+    <div
+      onClick={() => navigate(`/properties/${p.id}`)}
+      className={`relative glass-card overflow-hidden shrink-0 flex ${vertical ? 'flex-col w-full' : 'flex-col w-64'} cursor-pointer !p-0 ${isHidden ? 'hidden' : ''}`}
+    >
+      <div className={`relative ${vertical ? 'h-48' : 'h-36'} bg-dark-800 overflow-hidden`}>
+        {p.threeSixtyImageUrl ? (
+          <>
+            <iframe src={p.threeSixtyImageUrl} style={{ width: '117.64%', height: '117.64%', border: 'none', position: 'absolute', top: 0, left: 0 }} className="pointer-events-none" />
+            <div className="absolute top-2 left-2 flex items-center gap-1 bg-dark-900/80 px-2 py-0.5 rounded-full backdrop-blur-sm z-10">
+              <span className="w-1.5 h-1.5 bg-accent-400 rounded-full animate-ping" />
+              <span className="text-white text-[8px] font-bold">360° LIVE</span>
+            </div>
+          </>
+        ) : (
+          <div className="absolute inset-0 bg-gradient-to-br from-dark-800 to-dark-900 flex items-center justify-center">
+            <MapIcon className="w-8 h-8 text-dark-600" />
           </div>
-        </>
-      ) : (
-        <div className="absolute inset-0 bg-gradient-to-br from-dark-800 to-dark-900 flex items-center justify-center">
-          <div className="text-center text-dark-600">
-            <MapIcon className="w-8 h-8 mx-auto mb-1" />
-            <p className="text-[9px] font-medium uppercase tracking-wider">No Preview</p>
-          </div>
+        )}
+        <div className="absolute bottom-2 left-2 right-2 z-10 flex justify-between items-end pointer-events-none">
+            <Chip label={p.category} color="primary" size="xs" />
+            <StatusBadge status={p.status} size="sm" />
         </div>
-      )}
-      {/* Category chip */}
-      <div className="absolute top-2 right-2">
-        <Chip label={p.category} color={p.category === 'AGRICULTURAL' ? 'accent' : p.category === 'RESIDENTIAL' ? 'cyan' : p.category === 'COMMERCIAL' ? 'warning' : 'neutral'} size="xs" />
+      </div>
+      <div className="p-4 flex flex-col gap-2">
+        <h3 className="text-white font-semibold text-sm truncate">{p.title}</h3>
+        <p className="text-dark-400 text-xs flex items-center gap-1 truncate"><MapPin className="w-3 h-3 shrink-0"/> {p.village}, {p.district}</p>
+        <div className="flex items-center justify-between mt-2 pt-2 border-t border-white/[0.05]">
+          <p className="text-white font-bold text-sm">₹{p.price?.toLocaleString('en-IN')}</p>
+          <p className="text-dark-300 text-xs">{p.area} acres</p>
+        </div>
       </div>
     </div>
-
-    {/* Content */}
-    <div className="p-4 flex-1 flex flex-col gap-3">
-      <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0">
-          <h3 className="text-white font-semibold text-sm truncate group-hover:text-primary-300 transition-colors">
-            {p.title}
-          </h3>
-          <p className="text-dark-500 text-[11px] mt-0.5 truncate">📍 {p.village}, {p.district}</p>
-        </div>
-        <StatusBadge status={p.status} />
-      </div>
-
-      <div className="grid grid-cols-2 gap-2 text-[11px]">
-        <div className="bg-white/[0.04] rounded-lg p-2.5">
-          <p className="text-dark-500">Area</p>
-          <p className="text-white font-bold mt-0.5">{p.area} ac</p>
-        </div>
-        <div className="bg-accent-500/[0.08] rounded-lg p-2.5">
-          <p className="text-accent-500">Price</p>
-          <p className="text-accent-400 font-bold mt-0.5">₹{p.price?.toLocaleString('en-IN')}</p>
-        </div>
-      </div>
-
-      <div className="flex justify-end pt-2 border-t border-white/[0.06]">
-        <Link to={`/properties/${p.id}`} onClick={(e) => e.stopPropagation()}>
-          <Button variant="secondary" size="xs" iconRight={<ExternalLink className="w-3 h-3" />}>
-            View Property
-          </Button>
-        </Link>
-      </div>
-    </div>
-  </motion.div>
-));
+  );
+};
 
 export const BuyerDashboard = () => {
-  const [viewTab, setViewTab] = useState<'explore' | 'saved' | 'visits' | 'chat' | 'notifications'>('explore');
+  const navigate = useNavigate();
+  const [viewTab, setViewTab] = useState<'home' | 'map' | 'chat' | 'wishlist' | 'schedule' | 'settings'>('home');
   const [listMode, setListMode] = useState<'list' | 'map'>('list');
 
   const [properties, setProperties] = useState<Property[]>([]);
@@ -100,50 +72,91 @@ export const BuyerDashboard = () => {
 
   // Detail panel states
   const [selectedProperty, setSelectedProperty] = useState<Property | null>(null);
-  const [propertyDocs, setPropertyDocs] = useState<PropertyDocument[]>([]);
-  const [propertyImages, setPropertyImages] = useState<PropertyImage[]>([]);
-  const [propertyVideos, setPropertyVideos] = useState<PropertyVideo[]>([]);
-  const [aiReport, setAiReport] = useState<AiVerification | null>(null);
-
   const [bookmarkIds, setBookmarkIds] = useState<Set<string>>(new Set());
   const [filters, setFilters] = useState<{ state: string; district: string; category: any }>({ state: '', district: '', category: '' });
   const [selectedConvoId, setSelectedConvoId] = useState<string | null>(null);
   const [chatInput, setChatInput] = useState('');
-  const [showFilters, setShowFilters] = useState(false);
+  const [isNotificationSidebarOpen, setIsNotificationSidebarOpen] = useState(false);
+  const [isChatSidebarOpen, setIsChatSidebarOpen] = useState(false);
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  const [heroSlideIndex, setHeroSlideIndex] = useState(0);
+  const [isNavVisible, setIsNavVisible] = useState(true);
+  const [lastScrollY, setLastScrollY] = useState(0);
+  const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
 
+  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const currentScrollY = e.currentTarget.scrollTop;
+    if (currentScrollY <= 0) {
+      setIsNavVisible(true);
+      setLastScrollY(0);
+      return;
+    }
+    if (currentScrollY > lastScrollY + 10) {
+      setIsNavVisible(false);
+      setLastScrollY(currentScrollY);
+    } else if (currentScrollY < lastScrollY - 10) {
+      setIsNavVisible(true);
+      setLastScrollY(currentScrollY);
+    }
+  };
+
+  const heroSlides = [
+    { title: 'Find Your Perfect Piece of Land', subtitle: 'Discover verified agricultural properties across India.', cta: 'Explore Farms', image: '/images/hero_agriculture.png' },
+    { title: 'Build Your Dream Home Today', subtitle: 'Explore premium residential plots with clear titles.', cta: 'View Residential', image: '/images/hero_residential.png' },
+    { title: 'Prime Commercial Spaces', subtitle: 'High ROI commercial lands in rapidly growing hubs.', cta: 'View Commercial', image: '/images/hero_commercial.png' }
+  ];
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setHeroSlideIndex(prev => (prev + 1) % heroSlides.length);
+    }, 4000);
+    return () => clearInterval(timer);
+  }, [heroSlides.length]);
+  
   const currentUser = authService.currentUser();
   const unreadCount = notifications.filter(n => !n.isRead).length;
 
-  useEffect(() => { loadData(); loadBookmarks(); loadVisits(); loadNotifications(); }, []);
+  const userLocRef = useRef<{lat: number, lng: number} | null>(null);
+  const [userLocation, setUserLocation] = useState<{lat: number, lng: number} | null>(null);
 
-  const setViewMode = (tab: typeof viewTab) => {
-    setViewTab(tab);
-    if (tab === 'saved') loadBookmarks();
-    else if (tab === 'visits') loadVisits();
-    else if (tab === 'chat') loadConversations();
-    else if (tab === 'notifications') loadNotifications();
+  const sortPropertiesByLocation = (props: Property[], loc: { lat: number, lng: number }) => {
+    return [...props].sort((a, b) => {
+      const distA = Math.hypot(a.latitude - loc.lat, a.longitude - loc.lng);
+      const distB = Math.hypot(b.latitude - loc.lat, b.longitude - loc.lng);
+      return distA - distB;
+    });
   };
 
-  const loadData = async () => {
+  useEffect(() => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const loc = { lat: position.coords.latitude, lng: position.coords.longitude };
+          userLocRef.current = loc;
+          setUserLocation(loc);
+          setProperties(prev => prev.length > 0 ? sortPropertiesByLocation(prev, loc) : prev);
+        },
+        (error) => console.error("Error getting location", error)
+      );
+    }
+    loadData(filters); loadBookmarks(); loadVisits(); loadNotifications();
+  }, []);
+
+  const loadData = async (currentFilters: any) => {
     setLoading(true);
     try {
-      const res = await propertyService.getProperties(filters);
+      const { category, ...backendFilters } = currentFilters;
+      let res = await propertyService.getProperties(backendFilters);
+      if (userLocRef.current) res = sortPropertiesByLocation(res, userLocRef.current);
       setProperties(res);
     } catch {} finally { setLoading(false); }
   };
 
-  const selectPropertyObj = async (p: Property) => {
-    setSelectedProperty(p);
-    setPropertyDocs([]); setPropertyImages([]); setPropertyVideos([]); setAiReport(null);
-    try { setPropertyImages(await propertyService.getImages(p.id)); } catch {}
-    try { setPropertyVideos(await propertyService.getVideos(p.id)); } catch {}
-    try { setPropertyDocs(await propertyService.getDocuments(p.id)); } catch {}
-    
-    // Attempt to load AI report if it exists
-    try {
-      const report = await propertyService.getAiReport(p.id);
-      setAiReport(report);
-    } catch {}
+  const handleCategoryClick = (categoryId: string) => {
+    const newCategory = filters.category === categoryId ? '' : categoryId;
+    const newFilters = { ...filters, category: newCategory };
+    setFilters(newFilters);
+    // Removed loadData(newFilters) to prevent backend fetching on category change
   };
 
   const loadBookmarks = async () => {
@@ -162,21 +175,20 @@ export const BuyerDashboard = () => {
     try { setNotifications(await propertyService.getNotifications()); } catch {}
   };
 
-  const markNotificationRead = async (id: string) => {
-    try { await propertyService.markNotificationRead(id); loadNotifications(); } catch {}
-  };
-
   const isBookmarked = (id: string) => bookmarkIds.has(id);
 
-  const toggleBookmark = async (id: string) => {
+  const toggleBookmark = async (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
     try {
       isBookmarked(id) ? await propertyService.unsaveProperty(id) : await propertyService.saveProperty(id);
       loadBookmarks();
     } catch {}
   };
 
-  const applyFilters = (e: React.FormEvent) => { e.preventDefault(); loadData(); };
-  const resetFilters = () => { setFilters({ state: '', district: '', category: '' }); loadData(); };
+  const handleLogout = () => {
+    authService.logout();
+    navigate('/auth/login');
+  };
 
   const loadConversations = async () => {
     try {
@@ -192,432 +204,476 @@ export const BuyerDashboard = () => {
   };
 
   const createNewChat = async (topicSuggestion?: string) => {
-    const title = prompt('Enter chat topic:', typeof topicSuggestion === 'string' ? topicSuggestion : 'Land Document Query');
+    const title = prompt('Enter chat topic:', typeof topicSuggestion === 'string' ? topicSuggestion : 'Land Query');
     if (!title) return;
     try {
       const res = await propertyService.startAiConversation(title);
       loadConversations();
       selectConversation(res.id);
-      setViewMode('chat');
+      setIsChatOpen(true);
     } catch {}
-  };
-
-  const handleRequestVisit = async () => {
-    if (!selectedProperty) return;
-    const dateStr = prompt('Enter preferred date (YYYY-MM-DD):', new Date().toISOString().split('T')[0]);
-    if (!dateStr) return;
-    const timeStr = prompt('Enter preferred time (HH:MM):', '10:00');
-    if (!timeStr) return;
-    try {
-      await propertyService.scheduleVisit(selectedProperty.id, { visitDate: dateStr, visitTime: timeStr });
-      loadVisits();
-      setViewMode('visits');
-    } catch (e) {
-      alert('Failed to request visit. Please try again.');
-    }
   };
 
   const sendMessage = async () => {
     if (!chatInput.trim() || !selectedConvoId) return;
     const text = chatInput;
     setChatInput('');
-    const opt: AiMessage = { id: Math.random().toString(), conversationId: selectedConvoId, senderRole: 'USER', content: text, timestamp: new Date().toISOString() };
+    const opt: AiMessage = { id: Math.random().toString(), conversationId: selectedConvoId, senderRole: 'USER', content: text, timestamp: new Date().toISOString(), isActive: true };
     setMessages(prev => [...prev, opt]);
     try { await propertyService.sendAiMessage(selectedConvoId, text); selectConversation(selectedConvoId); } catch {}
   };
 
-  const navItems = buyerNavItems(unreadCount);
-
-  // ─── Detail Panel ──────────────────────────────────────────────────
-  const renderDetailPanel = () => {
-    if (!selectedProperty) return null;
-    return (
-      <motion.div
-        initial={{ opacity: 0, x: 20 }}
-        animate={{ opacity: 1, x: 0 }}
-        className="w-full lg:w-[420px] shrink-0 glass-card p-5 lg:sticky lg:top-4 h-fit max-h-[85vh] overflow-y-auto scrollbar-premium"
-      >
-        <div className="flex justify-between items-start border-b border-white/[0.06] pb-4 mb-4">
-          <div>
-            <h3 className="text-white font-semibold text-sm">Property Details</h3>
-            <p className="text-dark-500 text-[10px] mt-0.5 truncate max-w-[260px]">{selectedProperty.title}</p>
-          </div>
-          <button onClick={() => setSelectedProperty(null)} className="text-dark-500 hover:text-white transition-colors">
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-
-        {/* 3D Map / Map Placeholder */}
-        <div className="relative h-40 rounded-xl overflow-hidden bg-dark-900 border border-white/[0.06] mb-5">
-          {selectedProperty.threeSixtyImageUrl ? (
-            <iframe src={selectedProperty.threeSixtyImageUrl} className="w-full h-full border-none pointer-events-none" allow="accelerometer; gyroscope" />
-          ) : (
-            <div className="absolute inset-0 w-full h-full">
-              <Map mode="detail" properties={[selectedProperty]} />
-            </div>
-          )}
-          <div className="absolute bottom-2 left-2 right-2 bg-dark-950/80 backdrop-blur-md p-2 rounded-lg border border-white/[0.06]">
-            <p className="text-white text-xs font-semibold truncate">{selectedProperty.address || selectedProperty.village}</p>
-            <p className="text-dark-400 text-[10px] truncate">{selectedProperty.district}, {selectedProperty.state} - {selectedProperty.pincode}</p>
-          </div>
-        </div>
-
-        {/* Property Details Grid */}
-        <div className="grid grid-cols-2 gap-2 mb-5">
-          <div className="bg-white/[0.03] p-2.5 rounded-xl border border-white/[0.06]">
-            <p className="text-dark-500 text-[10px]">Area</p>
-            <p className="text-white text-xs font-semibold">{selectedProperty.area} Acres</p>
-          </div>
-          <div className="bg-white/[0.03] p-2.5 rounded-xl border border-white/[0.06]">
-            <p className="text-dark-500 text-[10px]">Price</p>
-            <p className="text-white text-xs font-semibold">₹{selectedProperty.price?.toLocaleString('en-IN')}</p>
-          </div>
-          <div className="bg-white/[0.03] p-2.5 rounded-xl border border-white/[0.06]">
-            <p className="text-dark-500 text-[10px]">Category</p>
-            <p className="text-white text-xs font-semibold">{selectedProperty.category}</p>
-          </div>
-          <div className="bg-white/[0.03] p-2.5 rounded-xl border border-white/[0.06]">
-            <p className="text-dark-500 text-[10px]">Survey No.</p>
-            <p className="text-white text-xs font-semibold">{selectedProperty.surveyNumber}</p>
-          </div>
-        </div>
-
-        <p className="text-dark-300 text-[11px] mb-5 leading-relaxed">{selectedProperty.description?.split('[BOUNDS]:')[0].trim()}</p>
-
-        {/* Uploaded Media */}
-        {(propertyImages.length > 0 || propertyVideos.length > 0) && (
-          <div className="mb-5">
-            <h4 className="text-dark-400 text-[10px] font-semibold uppercase tracking-wider mb-3">Media Gallery</h4>
-            <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-premium">
-              {propertyImages.map(img => (
-                <div key={img.id} className="relative w-20 h-20 shrink-0 rounded-lg overflow-hidden border border-white/[0.1]">
-                  <img src={img.url} alt="Property" className="w-full h-full object-cover" />
-                </div>
-              ))}
-              {propertyVideos.map(vid => (
-                <div key={vid.id} className="relative w-20 h-20 shrink-0 rounded-lg overflow-hidden border border-white/[0.1] bg-dark-900 flex items-center justify-center">
-                  <Video className="w-6 h-6 text-dark-500" />
-                  <div className="absolute inset-0 flex items-center justify-center bg-black/40"><Play className="w-6 h-6 text-white opacity-80" /></div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Action Buttons */}
-        <div className="flex gap-2 mt-2">
-          <Button variant="primary" size="sm" className="flex-1" icon={<Calendar className="w-4 h-4" />} onClick={handleRequestVisit}>
-            Request Visit
-          </Button>
-          <Button variant="secondary" size="sm" className="flex-1" icon={<MessageSquare className="w-4 h-4" />} onClick={() => createNewChat(`Query about: ${selectedProperty.title}`)}>
-            Ask AI
-          </Button>
-        </div>
-      </motion.div>
-    );
+  const handleTabChange = (tab: typeof viewTab) => {
+    setViewTab(tab);
+    if (tab === 'wishlist') loadBookmarks();
+    else if (tab === 'schedule') loadVisits();
+    else if (tab === 'chat') loadConversations();
   };
 
+
+
   return (
-    <DashboardLayout
-      activeTab={viewTab}
-      onTabChange={(tab) => setViewMode(tab as any)}
-      navItems={navItems}
-      role="BUYER"
-      title="Buyer Dashboard"
-      subtitle={`Welcome, ${currentUser?.firstName || 'Explorer'}`}
-      unreadCount={unreadCount}
-      mobileNavItems={navItems}
-    >
+    <div className="relative h-screen bg-dark-950 flex flex-col overflow-hidden text-white font-sans">
+      
+      {/* ── APP BAR ── */}
+      <div 
+        style={{ borderBottomLeftRadius: '25px', borderBottomRightRadius: '25px' }}
+        className={`absolute top-0 left-0 right-0 bg-dark-900/90 backdrop-blur-xl border-b border-white/[0.05] px-4 py-3 flex items-center justify-between z-40 shadow-[0_5px_20px_rgba(0,0,0,0.3)] transition-transform duration-300 ${isNavVisible ? 'translate-y-0' : '-translate-y-full'}`}
+      >
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-primary-600 to-cyan-500 flex items-center justify-center shadow-lg shadow-primary-500/20">
+            <MapIcon className="w-4 h-4 text-white" />
+          </div>
+          <span className="text-white font-bold tracking-wide text-lg">LandLense</span>
+        </div>
 
-      {/* ── EXPLORE ── */}
-      <div className={`${viewTab === 'explore' ? 'block' : 'hidden'} space-y-5`}>
-          {/* Search Bar */}
-          <GlassCard padding="p-4">
-            <div className="flex items-center gap-3 flex-wrap">
-              <button onClick={() => setShowFilters(v => !v)} className="flex items-center gap-2 text-dark-300 hover:text-white text-sm transition-colors">
-                <Filter className="w-4 h-4" />
-                Filters
-              </button>
-
-              <AnimatePresence>
-                {showFilters && (
-                  <motion.form
-                    initial={{ opacity: 0, y: -8 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -8 }}
-                    onSubmit={applyFilters}
-                    className="w-full flex flex-wrap gap-3 mt-2"
+        <div className="flex items-center gap-3">
+          <div className="relative">
+            <button onClick={() => setIsNotificationSidebarOpen(true)} className="w-9 h-9 rounded-full bg-white/[0.05] flex items-center justify-center border border-white/[0.1]">
+              <Bell className="w-4 h-4 text-dark-300" />
+            </button>
+            {unreadCount > 0 && <span className="absolute top-0 right-0 w-2.5 h-2.5 bg-danger-500 border-2 border-dark-900 rounded-full" />}
+          </div>
+          
+          <div className="relative">
+            <button 
+              onClick={() => setIsProfileMenuOpen(!isProfileMenuOpen)}
+              className="w-9 h-9 rounded-full bg-gradient-to-tr from-primary-600 to-cyan-500 flex items-center justify-center shadow-lg shadow-primary-500/20"
+            >
+              <User className="w-5 h-5 text-white" />
+            </button>
+            
+            <AnimatePresence>
+              {isProfileMenuOpen && (
+                <>
+                  <motion.div 
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm" 
+                    onClick={() => setIsProfileMenuOpen(false)} 
+                  />
+                  <motion.div 
+                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                    className="absolute right-0 top-12 w-48 !bg-black border border-white/[0.1] rounded-2xl shadow-2xl overflow-hidden z-50"
                   >
-                    <input type="text" value={filters.state} onChange={e => setFilters({ ...filters, state: e.target.value })}
-                      placeholder="State..." className="input-dark flex-1 min-w-[140px]" />
-                    <input type="text" value={filters.district} onChange={e => setFilters({ ...filters, district: e.target.value })}
-                      placeholder="District..." className="input-dark flex-1 min-w-[140px]" />
-                    <select value={filters.category} onChange={e => setFilters({ ...filters, category: e.target.value })} className="select-dark flex-1 min-w-[140px]">
-                      <option value="">All Categories</option>
-                      <option value="AGRICULTURAL">Agricultural</option>
-                      <option value="RESIDENTIAL">Residential</option>
-                      <option value="COMMERCIAL">Commercial</option>
-                      <option value="INDUSTRIAL">Industrial</option>
-                    </select>
-                    <div className="flex gap-2">
-                      <Button variant="primary" size="sm" type="submit" icon={<Search className="w-3.5 h-3.5" />}>Search</Button>
-                      <Button variant="ghost" size="sm" onClick={resetFilters}>Reset</Button>
+                    <div className="px-4 py-3 border-b border-white/[0.05]">
+                      <p className="text-dark-400 text-[10px] font-bold uppercase tracking-wider">Signed in as</p>
+                      <p className="text-white text-sm font-semibold truncate">{currentUser?.firstName || 'Explorer'}</p>
                     </div>
-                  </motion.form>
-                )}
-              </AnimatePresence>
+                    <div className="py-2">
+                      <button className="w-full px-4 py-2 text-left text-sm text-white hover:bg-white/[0.05] flex items-center gap-2">
+                        <User className="w-4 h-4 text-dark-400" /> Profile
+                      </button>
+                      <button 
+                        onClick={() => { authService.logout(); navigate('/login'); }}
+                        className="w-full px-4 py-2 text-left text-sm text-danger-500 hover:bg-danger-500/10 flex items-center gap-2"
+                      >
+                        <LogOut className="w-4 h-4" /> Log out
+                      </button>
+                    </div>
+                  </motion.div>
+                </>
+              )}
+            </AnimatePresence>
+          </div>
+        </div>
+      </div>
 
-              <div className="ml-auto flex items-center gap-2">
-                <span className="text-dark-500 text-xs">{properties.length} properties</span>
-                <div className="flex bg-white/[0.05] rounded-lg p-0.5 border border-white/[0.08]">
-                  <button onClick={() => setListMode('list')} className={`px-2.5 py-1.5 rounded-md text-xs font-semibold transition-all ${listMode === 'list' ? 'bg-white/10 text-white' : 'text-dark-500'}`}>
-                    <LayoutGrid className="w-3.5 h-3.5" />
-                  </button>
-                  <button onClick={() => setListMode('map')} className={`px-2.5 py-1.5 rounded-md text-xs font-semibold transition-all ${listMode === 'map' ? 'bg-white/10 text-white' : 'text-dark-500'}`}>
-                    <MapIcon className="w-3.5 h-3.5" />
-                  </button>
+      {/* ── MAIN CONTENT AREA ── */}
+      <div onScroll={handleScroll} className={`flex-1 overflow-y-auto overflow-x-hidden scrollbar-hide pt-[68px] ${viewTab === 'map' ? 'pb-0' : 'pb-20'}`}>
+        <AnimatePresence mode="wait">
+          {/* ── HOME TAB ── */}
+          {viewTab === 'home' && (
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="pb-8">
+              
+              {/* Hero Slider Section */}
+              <div className="px-4 pt-6 pb-2 bg-gradient-to-br from-primary-900/30 to-dark-950 relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-64 h-64 bg-cyan-500/10 rounded-full blur-[80px] pointer-events-none" />
+                
+                {/* Carousel Area */}
+                <div className="relative h-[200px] w-full">
+                  <AnimatePresence mode="wait">
+                    <motion.div
+                      key={heroSlideIndex}
+                      initial={{ opacity: 0, x: 20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: -20 }}
+                      transition={{ duration: 0.4 }}
+                      className="absolute inset-0 flex items-center justify-between"
+                    >
+                       {/* Left side text */}
+                       <div className="w-[55%] flex flex-col justify-center relative z-10">
+                          <h1 className="text-xl font-bold text-white mb-2 leading-tight">{heroSlides[heroSlideIndex].title}</h1>
+                          <p className="text-dark-400 text-[10px] mb-4">{heroSlides[heroSlideIndex].subtitle}</p>
+                          <button className="bg-primary-600 hover:bg-primary-500 text-white text-[10px] font-bold px-4 py-2 rounded-xl shadow-lg shadow-primary-500/20 w-max transition-all active:scale-95">
+                            {heroSlides[heroSlideIndex].cta}
+                          </button>
+                       </div>
+                       
+                       {/* Right side illustration (Placeholder) */}
+                       <div className="w-[45%] h-full flex items-center justify-end relative z-0">
+                         {/* Optional masking to blend solid background images nicely */}
+                         <img src={heroSlides[heroSlideIndex].image} alt="Hero Illustration" className="h-full w-full object-cover rounded-2xl opacity-90 mix-blend-lighten" />
+                       </div>
+                    </motion.div>
+                  </AnimatePresence>
                 </div>
-                <Button variant="glass" size="xs" icon={<RefreshCw className="w-3 h-3" />} onClick={loadData} />
-              </div>
-            </div>
-          </GlassCard>
 
-          <div className="flex flex-col lg:flex-row gap-5 items-start">
-            <div className="flex-1 w-full space-y-5">
-              {/* LIST MODE */}
-              {listMode === 'list' && (
-                loading ? (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
-                    {[0,1,2,3,4,5].map(i => <SkeletonCard key={i} />)}
-                  </div>
-                ) : properties.length > 0 ? (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
-                    {properties.map(p => (
-                      <PropertyCard 
-                        key={p.id} p={p} 
-                        isBookmarked={isBookmarked} toggleBookmark={toggleBookmark}
-                        onClick={() => selectPropertyObj(p)}
-                        isSelected={selectedProperty?.id === p.id}
-                      />
-                    ))}
+                {/* Slider Indicators */}
+                <div className="flex justify-center gap-1.5 mt-2 mb-2 relative z-10">
+                  {heroSlides.map((_, i) => (
+                    <button key={i} onClick={() => setHeroSlideIndex(i)} className={`h-1.5 rounded-full transition-all duration-300 ${i === heroSlideIndex ? 'w-5 bg-primary-400' : 'w-1.5 bg-white/20 hover:bg-white/40'}`} />
+                  ))}
+                </div>
+                
+              </div>
+
+              {/* Categories */}
+              <div className="px-4 mb-8">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-sm font-bold text-white">Categories</h2>
+                </div>
+                <div className="grid grid-cols-4 gap-2">
+                  {[
+                    { id: 'AGRICULTURAL', label: 'Agricultural', color: 'bg-emerald-500/10 border-emerald-500/20', text: 'text-emerald-400' },
+                    { id: 'RESIDENTIAL', label: 'Residential', color: 'bg-cyan-500/10 border-cyan-500/20', text: 'text-cyan-400' },
+                    { id: 'COMMERCIAL', label: 'Commercial', color: 'bg-primary-500/10 border-primary-500/20', text: 'text-primary-400' },
+                    { id: 'INDUSTRIAL', label: 'Industrial', color: 'bg-amber-500/10 border-amber-500/20', text: 'text-amber-400' },
+                  ].map(cat => {
+                    const isActive = filters.category === cat.id;
+                    return (
+                      <button key={cat.id} onClick={() => handleCategoryClick(cat.id)} className="flex flex-col items-center gap-2 w-full">
+                        <div className={`w-14 h-14 rounded-full border flex items-center justify-center transition-transform active:scale-95 mx-auto ${isActive ? 'bg-primary-500 border-primary-500 text-white shadow-lg shadow-primary-500/30' : `${cat.color} ${cat.text}`}`}>
+                           <MapIcon className="w-6 h-6" />
+                        </div>
+                        <span className={`text-[10px] font-semibold text-center leading-tight break-words w-full ${isActive ? 'text-primary-400' : 'text-white'}`}>{cat.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Latest Added Properties */}
+              <div className="mb-8">
+                <div className="px-4 flex items-center justify-between mb-4">
+                  <h2 className="text-sm font-bold text-white">Latest Additions</h2>
+                  <button className="text-xs font-semibold text-primary-400 flex items-center">See All <ChevronRight className="w-3 h-3 ml-0.5" /></button>
+                </div>
+                {loading ? (
+                  <div className="flex gap-4 overflow-x-auto px-4 pb-4 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+                    {[0,1,2].map(i => <div key={i} className="w-64 shrink-0"><SkeletonCard /></div>)}
                   </div>
                 ) : (
-                  <EmptyState
-                    icon={<Search className="w-8 h-8" />}
-                    title="No properties found"
-                    description="Try adjusting your filters or search in a different area."
-                    action={{ label: 'Reset Filters', onClick: resetFilters }}
-                  />
-                )
-              )}
+                  <div className="flex gap-4 overflow-x-auto px-4 pb-4 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+                    {properties.slice(0, 5).map(p => (
+                      <MobilePropertyCard key={p.id} p={p} isHidden={!!filters.category && p.category !== filters.category} />
+                    ))}
+                  </div>
+                )}
+                {!loading && properties.slice(0, 5).filter(p => !filters.category || p.category === filters.category).length === 0 && (
+                  <div className="py-8 flex flex-col items-center justify-center text-center opacity-60 px-4">
+                    <MapIcon className="w-10 h-10 text-dark-500 mb-2" />
+                    <p className="text-sm font-semibold text-white">No properties found</p>
+                    <p className="text-xs text-dark-400 mt-1">There are currently no properties available for the selected filters.</p>
+                  </div>
+                )}
+              </div>
 
-              {/* MAP MODE */}
-              {listMode === 'map' && (
-                <div className="h-[500px] rounded-2xl overflow-hidden border border-white/[0.08]">
-                  <Map mode="view" properties={properties} onLocationSelected={() => {}} />
+              {/* Top Rated Properties */}
+              {properties.length > 5 && properties.slice(5, 10).filter(p => !filters.category || p.category === filters.category).length > 0 && (
+                <div className="mb-4">
+                  <div className="px-4 flex items-center justify-between mb-4">
+                    <h2 className="text-sm font-bold text-white flex items-center gap-1.5"><Star className="w-4 h-4 text-amber-400 fill-amber-400"/> Top Verified</h2>
+                    <button className="text-xs font-semibold text-primary-400 flex items-center">See All <ChevronRight className="w-3 h-3 ml-0.5" /></button>
+                  </div>
+                  <div className="px-4 flex flex-col gap-4">
+                     {properties.slice(5, 10).map(p => (
+                       <MobilePropertyCard key={p.id} p={p} vertical={true} isHidden={!!filters.category && p.category !== filters.category} />
+                     ))}
+                  </div>
                 </div>
               )}
-            </div>
 
-            {renderDetailPanel()}
-          </div>
-        </div>
-
-
-      {/* ── VISITS ── */}
-      <div className={`${viewTab === 'visits' ? 'block' : 'hidden'} space-y-5`}>
-          <div>
-            <h2 className="text-white font-bold text-lg">Scheduled Visits</h2>
-            <p className="text-dark-400 text-sm mt-0.5">Track status of your scheduled property tours</p>
-          </div>
-          {visits.length > 0 ? (
-            <div className="space-y-3">
-              {visits.map(v => (
-                <GlassCard key={v.id} className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                  <div>
-                    <div className="flex items-center gap-2 mb-1">
-                      <Calendar className="w-4 h-4 text-primary-400" />
-                      <span className="text-white font-semibold text-sm">{v.visitDate} at {v.visitTime}</span>
-                      <Chip
-                        label={v.status}
-                        color={v.status === 'CONFIRMED' ? 'accent' : v.status === 'SCHEDULED' ? 'warning' : v.status === 'REJECTED' ? 'danger' : 'neutral'}
-                        size="xs"
-                        dot
-                      />
-                    </div>
-                    <p className="text-dark-500 text-xs font-mono">Property: {v.property?.title?.slice(0, 30) || v.property?.id?.slice(0, 12)}...</p>
-                  </div>
-                  <Link to={`/properties/${v.property?.id}`}>
-                    <Button variant="glass" size="xs" iconRight={<ExternalLink className="w-3 h-3" />}>
-                      View Property
-                    </Button>
-                  </Link>
-                </GlassCard>
-              ))}
-            </div>
-          ) : (
-            <EmptyState
-              icon={<Calendar className="w-8 h-8" />}
-              title="No visits scheduled"
-              description="Visit property detail pages to schedule guided tours."
-              action={{ label: 'Explore Properties', onClick: () => setViewMode('explore') }}
-            />
+            </motion.div>
           )}
-        </div>
 
-      {/* ── AI CHAT ── */}
-      <div className={`${viewTab === 'chat' ? 'flex' : 'hidden'} gap-4 h-[calc(100vh-200px)]`}>
-          {/* Conversations */}
-          <div className="w-64 shrink-0 flex flex-col gap-2">
-            <div className="flex items-center justify-between mb-1">
-              <h3 className="text-white font-semibold text-sm">Conversations</h3>
-              <Button variant="ghost" size="xs" icon={<Plus className="w-3.5 h-3.5" />} onClick={createNewChat}>New</Button>
+          {/* ── MAP TAB ── */}
+          {viewTab === 'map' && (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="h-full relative">
+              <Map mode="view" properties={properties} onLocationSelected={() => {}} className="!rounded-none !border-none" />
+              <div className="absolute top-4 left-4 right-4 bg-dark-900/90 backdrop-blur-xl rounded-2xl border border-white/[0.1] p-3 flex items-center gap-3 shadow-2xl">
+                <Search className="w-5 h-5 text-dark-400" />
+                <input type="text" placeholder="Search location..." className="bg-transparent text-sm text-white w-full outline-none" />
+              </div>
+            </motion.div>
+          )}
+
+          {/* ── WISHLIST TAB ── */}
+          {viewTab === 'wishlist' && (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="p-4 space-y-4">
+              <h1 className="text-xl font-bold text-white mb-2">Saved Properties</h1>
+              {savedProperties.length > 0 ? (
+                <div className="flex flex-col gap-4">
+                  {savedProperties.map(p => <MobilePropertyCard key={p.id} p={p} vertical={true} />)}
+                </div>
+              ) : (
+                <EmptyState icon={<Bookmark className="w-12 h-12" />} title="Your wishlist is empty" description="Save properties you love to view them later." />
+              )}
+            </motion.div>
+          )}
+
+          {/* ── SCHEDULE TAB (Visits) ── */}
+          {viewTab === 'schedule' && (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="p-4 space-y-4">
+              <h1 className="text-xl font-bold text-white mb-2">My Schedule</h1>
+              {visits.length > 0 ? (
+                <div className="flex flex-col gap-4">
+                  {visits.map(v => (
+                    <div key={v.id} className="glass-card p-4 flex gap-4 items-center">
+                      <div className="w-12 h-12 rounded-xl bg-primary-500/10 border border-primary-500/20 flex flex-col items-center justify-center shrink-0">
+                        <span className="text-[10px] text-primary-400 font-bold uppercase">{new Date(v.visitDate).toLocaleString('default', { month: 'short' })}</span>
+                        <span className="text-sm text-white font-bold">{new Date(v.visitDate).getDate()}</span>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h3 className="text-sm font-bold text-white truncate">{v.property?.title || 'Unknown Property'}</h3>
+                        <p className="text-xs text-dark-400 flex items-center gap-1 mt-1"><Clock className="w-3 h-3"/> {v.visitTime}</p>
+                      </div>
+                      <StatusBadge status={v.status} size="sm" />
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <EmptyState icon={<Calendar className="w-12 h-12" />} title="No upcoming visits" description="Schedule a site visit to view properties." />
+              )}
+            </motion.div>
+          )}
+
+          {/* ── CHAT TAB ── */}
+          {/* Moved to full-screen modal triggered by FAB */}
+
+          {/* ── SETTINGS TAB ── */}
+          {viewTab === 'settings' && (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="p-4">
+              <h1 className="text-xl font-bold text-white mb-6">Settings</h1>
+              
+              <div className="glass-card p-4 flex items-center gap-4 mb-6">
+                 <div className="w-14 h-14 rounded-full bg-gradient-to-tr from-primary-600 to-cyan-500 flex items-center justify-center">
+                    <User className="w-6 h-6 text-white" />
+                 </div>
+                 <div className="flex-1">
+                   <h2 className="text-white font-bold">{currentUser?.firstName} {currentUser?.lastName}</h2>
+                   <p className="text-dark-400 text-xs">{currentUser?.email}</p>
+                 </div>
+                 <Button variant="ghost" size="xs">Edit</Button>
+              </div>
+
+              <div className="space-y-2 mb-6">
+                <h3 className="text-xs font-bold text-dark-400 uppercase tracking-wider mb-2 ml-1">Account</h3>
+                {['Profile Information', 'Saved Addresses', 'Payment Methods'].map(item => (
+                  <button key={item} className="w-full p-4 glass-card flex items-center justify-between hover:bg-white/[0.05] transition-colors">
+                    <span className="text-sm font-semibold text-white">{item}</span>
+                    <ChevronRight className="w-4 h-4 text-dark-500" />
+                  </button>
+                ))}
+              </div>
+
+              <div className="space-y-2">
+                <h3 className="text-xs font-bold text-dark-400 uppercase tracking-wider mb-2 ml-1">Preferences</h3>
+                {['Notifications', 'Language & Region', 'Privacy & Security'].map(item => (
+                  <button key={item} className="w-full p-4 glass-card flex items-center justify-between hover:bg-white/[0.05] transition-colors">
+                    <span className="text-sm font-semibold text-white">{item}</span>
+                    <ChevronRight className="w-4 h-4 text-dark-500" />
+                  </button>
+                ))}
+              </div>
+
+              <button onClick={handleLogout} className="w-full mt-8 p-4 rounded-2xl bg-danger-500/10 border border-danger-500/20 text-danger-400 font-bold text-sm flex items-center justify-center gap-2 hover:bg-danger-500/20 transition-colors">
+                <LogOut className="w-4 h-4" /> Log Out
+              </button>
+            </motion.div>
+          )}
+
+        </AnimatePresence>
+      </div>
+
+      {/* ── NOTIFICATION SIDEBAR ── */}
+      <AnimatePresence>
+        {isNotificationSidebarOpen && (
+          <>
+            {/* Backdrop */}
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60]" onClick={() => setIsNotificationSidebarOpen(false)} />
+            
+            {/* Sidebar */}
+            <motion.div initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} transition={{ type: 'spring', damping: 25, stiffness: 200 }} className="fixed top-0 right-0 bottom-0 w-80 bg-[#090C15] border-l border-white/[0.05] z-[70] flex flex-col shadow-[-10px_0_50px_rgba(0,0,0,0.8)]">
+              <div className="flex items-center justify-between p-4 border-b border-white/[0.05]">
+                <h2 className="text-lg font-bold text-white">Notifications</h2>
+                <button onClick={() => setIsNotificationSidebarOpen(false)} className="w-8 h-8 rounded-full bg-white/[0.05] flex items-center justify-center hover:bg-white/[0.1]"><X className="w-4 h-4 text-white"/></button>
+              </div>
+              <div className="flex-1 overflow-y-auto p-4 space-y-3">
+                {notifications.length > 0 ? notifications.map(notif => (
+                  <div key={notif.id} className={`p-4 rounded-xl border ${notif.isRead ? 'bg-dark-900/50 border-white/[0.02]' : 'bg-primary-500/10 border-primary-500/20'}`}>
+                    <h3 className="text-sm font-bold text-white">{notif.title}</h3>
+                    <p className="text-xs text-dark-400 mt-1">{notif.message}</p>
+                    <span className="text-[10px] text-dark-500 mt-2 block">{new Date(notif.createdAt).toLocaleDateString()}</span>
+                  </div>
+                )) : (
+                  <div className="text-center text-dark-500 py-8 text-sm">No new notifications</div>
+                )}
+              </div>
+            </motion.div>
+          </>
+        )}
+
+        {/* Chat History Sidebar */}
+        {isChatSidebarOpen && (
+          <>
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[105]" onClick={() => setIsChatSidebarOpen(false)} />
+            
+            <motion.div initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} transition={{ type: 'spring', damping: 25, stiffness: 200 }} className="fixed top-0 right-0 bottom-0 w-80 bg-[#090C15] border-l border-white/[0.05] z-[110] flex flex-col shadow-[-10px_0_50px_rgba(0,0,0,0.8)]">
+              <div className="flex items-center justify-between p-4 border-b border-white/[0.05]">
+                <h2 className="text-lg font-bold text-white">Chat History</h2>
+                <button onClick={() => setIsChatSidebarOpen(false)} className="w-8 h-8 rounded-full bg-white/[0.05] flex items-center justify-center hover:bg-white/[0.1]"><X className="w-4 h-4 text-white"/></button>
+              </div>
+              <div className="flex-1 overflow-y-auto p-4 space-y-2">
+                {conversations.length > 0 ? conversations.map(c => (
+                  <button 
+                    key={c.id} 
+                    onClick={() => { selectConversation(c.id); setIsChatSidebarOpen(false); }}
+                    className={`w-full text-left px-4 py-3 rounded-xl border transition-colors ${selectedConvoId === c.id ? 'bg-primary-600/20 border-primary-500/30 text-primary-400' : 'bg-dark-900/50 border-white/[0.05] text-white hover:bg-dark-800'}`}
+                  >
+                    <h3 className="text-sm font-semibold truncate">{c.title}</h3>
+                  </button>
+                )) : (
+                  <div className="text-center text-dark-500 py-8 text-sm">No chat history</div>
+                )}
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* ── CHAT MODAL ── */}
+      <AnimatePresence>
+        {isChatOpen && (
+          <motion.div initial={{ opacity: 0, y: 50 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 50 }} className="fixed inset-0 z-[100] bg-[#090C15] flex flex-col">
+            <div className="px-4 py-3 bg-dark-900 border-b border-white/[0.05] flex justify-between items-center shrink-0 pt-safe">
+               <div>
+                 <h2 className="text-white font-bold">AI Assistant</h2>
+                 <p className="text-[10px] text-dark-400">Ask about any property or land record.</p>
+               </div>
+               <div className="flex items-center gap-2">
+                 <Button variant="ghost" size="xs" onClick={() => createNewChat()}>New</Button>
+                 <button onClick={() => setIsChatSidebarOpen(true)} className="w-8 h-8 rounded-full bg-white/[0.05] flex items-center justify-center border border-white/[0.1] hover:bg-white/[0.1]">
+                   <Menu className="w-4 h-4 text-white" />
+                 </button>
+                 <button onClick={() => setIsChatOpen(false)} className="w-8 h-8 rounded-full bg-white/[0.05] flex items-center justify-center border border-white/[0.1] hover:bg-white/[0.1]">
+                   <X className="w-4 h-4 text-white" />
+                 </button>
+               </div>
             </div>
-            <div className="flex-1 overflow-y-auto space-y-1.5 scrollbar-premium">
-              {conversations.map(convo => (
-                <button
-                  key={convo.id}
-                  onClick={() => selectConversation(convo.id)}
-                  className={`w-full text-left px-3 py-2.5 rounded-xl text-xs font-medium transition-all ${
-                    selectedConvoId === convo.id
-                      ? 'bg-primary-500/15 border border-primary-500/30 text-primary-300'
-                      : 'glass-card text-dark-400 hover:text-white'
-                  }`}
-                >
-                  <p className="truncate">{convo.title || 'Untitled Chat'}</p>
+            
+            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+               {messages.length === 0 ? (
+                  <div className="h-full flex flex-col items-center justify-center text-center opacity-60">
+                    <MessageSquare className="w-12 h-12 text-dark-500 mb-3" />
+                    <p className="text-sm font-semibold text-white">Start a conversation</p>
+                    <p className="text-xs text-dark-400 mt-1">Ask questions about land laws, prices, and more.</p>
+                  </div>
+               ) : (
+                 messages.map(msg => (
+                   <div key={msg.id} className={`flex ${msg.senderRole === 'USER' ? 'justify-end' : 'justify-start'}`}>
+                     <div className={`max-w-[85%] p-3 rounded-2xl text-sm ${msg.senderRole === 'USER' ? 'bg-primary-600 text-white rounded-tr-sm' : 'bg-dark-800 text-dark-100 rounded-tl-sm border border-white/[0.05]'}`}>
+                        <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
+                     </div>
+                   </div>
+                 ))
+               )}
+            </div>
+
+            <div className="p-4 bg-dark-900 border-t border-white/[0.05] shrink-0 pb-safe">
+              <div className="flex gap-2 mb-4">
+                <input type="text" value={chatInput} onChange={e => setChatInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && sendMessage()} placeholder="Message AI..." className="input-dark flex-1 !rounded-full" />
+                <button onClick={sendMessage} className="w-10 h-10 rounded-full bg-primary-600 flex items-center justify-center shrink-0 text-white hover:bg-primary-500 transition-colors">
+                  <Send className="w-4 h-4 ml-1" />
                 </button>
-              ))}
-              {conversations.length === 0 && (
-                <p className="text-dark-600 text-xs px-2 py-4 text-center">No conversations yet. Click New to start.</p>
-              )}
-            </div>
-          </div>
-
-          {/* Message Area */}
-          <div className="flex-1 glass-card flex flex-col overflow-hidden !p-0">
-            {/* Header */}
-            <div className="px-5 py-4 border-b border-white/[0.06] flex items-center gap-3">
-              <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-primary-500 to-cyan-500 flex items-center justify-center">
-                <MessageSquare className="w-4 h-4 text-white" />
               </div>
-              <div>
-                <h4 className="text-white text-sm font-semibold">LandLens AI Assistant</h4>
-                <p className="text-dark-500 text-[10px]">Ask about land records, Patta verification, and survey boundaries</p>
-              </div>
-              <div className="ml-auto status-dot-online" />
             </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-            {/* Messages */}
-            <div className="flex-1 p-5 overflow-y-auto space-y-4 scrollbar-premium">
-              {messages.length === 0 && (
-                <div className="h-full flex items-center justify-center">
-                  <div className="text-center">
-                    <MessageSquare className="w-10 h-10 text-dark-600 mx-auto mb-3" />
-                    <p className="text-dark-500 text-sm">Select a conversation or start a new one</p>
-                  </div>
-                </div>
-              )}
-              {messages.map(msg => (
-                <div key={msg.id} className={`flex ${msg.senderRole === 'USER' ? 'justify-end' : 'justify-start'}`}>
-                  <div className={`max-w-[72%] px-4 py-3 rounded-2xl text-sm leading-relaxed ${
-                    msg.senderRole === 'USER'
-                      ? 'bg-primary-600 text-white rounded-tr-sm'
-                      : 'glass-card text-dark-200 rounded-tl-sm'
-                  }`}>
-                    <div className="markdown-body space-y-3">
-                      <ReactMarkdown
-                        remarkPlugins={[remarkGfm]}
-                        components={{
-                          table: ({ node, ...props }) => (
-                          <div className="overflow-x-auto my-3 border border-white/[0.08] rounded-xl bg-dark-900/50 backdrop-blur-md">
-                            <table className="w-full text-left border-collapse" {...props} />
-                          </div>
-                        ),
-                        th: ({ node, ...props }) => <th className="p-3 text-xs font-semibold text-white border-b border-white/[0.08] bg-white/[0.02]" {...props} />,
-                        td: ({ node, ...props }) => <td className="p-3 text-xs text-dark-300 border-b border-white/[0.04]" {...props} />,
-                        a: ({ node, ...props }) => <a className="text-primary-400 hover:text-primary-300 underline underline-offset-2" {...props} />,
-                        code: ({ node, inline, className, children, ...props }: any) => {
-                          const match = /language-(\w+)/.exec(className || '');
-                          if (!inline && match && match[1] === 'json') {
-                            try {
-                              const data = JSON.parse(String(children).replace(/\n$/, ''));
-                              if (data.type === 'property' && data.propertyId) {
-                                const p = properties.find(prop => prop.id === data.propertyId) || savedProperties.find(prop => prop.id === data.propertyId);
-                                if (p) {
-                                  return (
-                                    <div className="w-[300px] my-4 cursor-pointer" onClick={() => { selectPropertyObj(p); setViewMode('explore'); }}>
-                                      <PropertyCard 
-                                        p={p} 
-                                        isBookmarked={isBookmarked} 
-                                        toggleBookmark={toggleBookmark}
-                                        onClick={() => { selectPropertyObj(p); setViewMode('explore'); }}
-                                        isSelected={false}
-                                      />
-                                    </div>
-                                  );
-                                }
-                              }
-                            } catch (e) {}
-                          }
-                          return <code className={inline ? "bg-white/10 rounded px-1.5 py-0.5 text-xs font-mono" : "block bg-dark-950/80 p-3 rounded-lg text-xs font-mono overflow-x-auto border border-white/[0.06] my-2"} {...props}>{children}</code>;
-                        },
-                        p: ({ node, ...props }) => <p className="leading-relaxed" {...props} />
-                      }}
-                    >
-                      {msg.content}
-                    </ReactMarkdown>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
+      {/* ── FLOATING CHAT BUTTON ── */}
+      <button 
+        onClick={() => { 
+          loadConversations(); 
+          setIsChatOpen(true);
+          if (selectedProperty) {
+            setChatInput(`I have a question about property ${selectedProperty.propertyCode} - ${selectedProperty.title}: `);
+          }
+        }}
+        className={`fixed bottom-[68px] right-4 z-[55] w-14 h-14 !bg-blue-600 rounded-full shadow-[0_5px_20px_rgba(37,99,235,0.4)] flex items-center justify-center text-white hover:!bg-blue-500 transition-all duration-300 active:scale-95 ${isNavVisible ? 'translate-y-0 opacity-100' : 'translate-y-[150px] opacity-0'}`}
+      >
+        <MessageSquare className="w-6 h-6" />
+      </button>
 
-            {/* Input */}
-            <div className="px-5 py-4 border-t border-white/[0.06] flex gap-3">
-              <input
-                type="text" value={chatInput}
-                onChange={e => setChatInput(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && sendMessage()}
-                placeholder="Ask about land records, Patta verification..."
-                className="input-dark flex-1"
-              />
-              <Button variant="primary" size="sm" icon={<Send className="w-4 h-4" />} onClick={sendMessage} />
-            </div>
-          </div>
+      {/* ── BOTTOM NAVIGATION BAR ── */}
+      <div className={`flex-none bg-dark-900/95 backdrop-blur-xl border-t border-white/[0.05] fixed bottom-0 left-0 right-0 z-50 pb-safe rounded-t-[25px] shadow-[0_-5px_30px_rgba(0,0,0,0.4)] transition-transform duration-300 ${isNavVisible ? 'translate-y-0' : 'translate-y-full'}`}>
+        <div className="flex items-center justify-around h-[51px]">
+          {[
+            { id: 'home', icon: Home, label: 'Home' },
+            { id: 'map', icon: MapIcon, label: 'Map' },
+            { id: 'schedule', icon: Calendar, label: 'Visits' }
+          ].map(item => {
+             const Icon = item.icon;
+             const isActive = viewTab === item.id;
+             return (
+                <button
+                  key={item.id}
+                  onClick={() => handleTabChange(item.id as any)}
+                  className="flex flex-col items-center justify-center w-full h-full relative"
+                >
+                  <div className={`w-8 h-8 rounded-xl flex items-center justify-center transition-all duration-300 ${isActive ? 'bg-primary-500/20' : ''}`}>
+                    <Icon className={`w-5 h-5 transition-colors ${isActive ? 'text-primary-400' : 'text-dark-500'}`} />
+                  </div>
+                  <span className={`text-[9px] font-semibold transition-colors mt-0.5 ${isActive ? 'text-primary-400' : 'text-dark-500'}`}>
+                    {item.label}
+                  </span>
+                  {isActive && (
+                    <motion.div layoutId="mobileNav" className="absolute bottom-0 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-primary-500 rounded-t-full" />
+                  )}
+                </button>
+             );
+          })}
         </div>
-
-      {/* ── NOTIFICATIONS ── */}
-      <div className={`${viewTab === 'notifications' ? 'block' : 'hidden'} space-y-5`}>
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-white font-bold text-lg">Notifications</h2>
-              <p className="text-dark-400 text-sm mt-0.5">Alerts about verifications, visits, and account activity</p>
-            </div>
-            {unreadCount > 0 && <Chip label={`${unreadCount} unread`} color="danger" dot />}
-          </div>
-          {notifications.length > 0 ? (
-            <div className="space-y-3">
-              {notifications.map(n => (
-                <GlassCard key={n.id} className={`flex items-start justify-between gap-4 ${!n.isRead ? '!border-primary-500/20 !bg-primary-500/[0.04]' : ''}`}>
-                  <div className="flex-1 min-w-0">
-                    <h3 className="text-white font-semibold text-sm">{n.title}</h3>
-                    <p className="text-dark-400 text-xs mt-0.5 leading-relaxed">{n.message}</p>
-                    <p className="text-dark-600 text-[10px] mt-1.5 flex items-center gap-1">
-                      <Clock className="w-3 h-3" />
-                      {new Date(n.createdTime).toLocaleString()}
-                    </p>
-                  </div>
-                  {!n.isRead
-                    ? <Button variant="secondary" size="xs" onClick={() => markNotificationRead(n.id)}>Mark Read</Button>
-                    : <CheckCircle className="w-4 h-4 text-dark-600 shrink-0" />
-                  }
-                </GlassCard>
-              ))}
-            </div>
-          ) : (
-            <EmptyState icon={<Bell className="w-8 h-8" />} title="No notifications" description="You're all caught up!" />
-          )}
-        </div>
-    </DashboardLayout>
+      </div>
+      
+      {/* Spacer for pb-safe */}
+      <style dangerouslySetInnerHTML={{__html: `
+        .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
+      `}} />
+    </div>
   );
 };

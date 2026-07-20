@@ -51,6 +51,13 @@ export const PanoramaViewer: React.FC<PanoramaViewerProps> = React.memo(({ url }
         return;
       }
 
+      // Add smooth autorotation if possible
+      if (!embedUrl.includes('?')) {
+        embedUrl += '?autoplay=1&autorotate=1&autorotation=1';
+      } else {
+        embedUrl += '&autoplay=1&autorotate=1&autorotation=1';
+      }
+
       setSafeUrl(embedUrl);
     } catch (e) {
       setErrorMsg('The provided virtual tour link is not a valid URL.');
@@ -58,7 +65,7 @@ export const PanoramaViewer: React.FC<PanoramaViewerProps> = React.memo(({ url }
   }, [url]);
 
   return (
-    <div className="relative w-full h-full bg-slate-950 rounded-2xl overflow-hidden shadow-lg border border-slate-800 flex flex-col">
+    <div className="relative w-full h-full bg-slate-950 overflow-hidden shadow-lg border border-slate-800 flex flex-col">
       {errorMsg ? (
         <div className="flex-1 flex flex-col items-center justify-center p-8 text-center text-slate-300">
           <AlertCircle className="w-12 h-12 text-rose-500 mb-4 animate-pulse" />
@@ -82,22 +89,6 @@ export const PanoramaViewer: React.FC<PanoramaViewerProps> = React.memo(({ url }
             </iframe>
           </div>
 
-          {/* Interactive badge — top-left */}
-          <div className="absolute top-2 left-2 z-30 bg-slate-900/80 text-white text-[9px] px-2 py-1 rounded-full border border-slate-700/50 flex items-center gap-1 backdrop-blur-sm pointer-events-none">
-            <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-ping"></span>
-            <span>360° View</span>
-          </div>
-
-          {/* Open Street View — bottom center */}
-          <a
-            href={url}
-            target="_blank"
-            rel="noreferrer"
-            className="absolute bottom-3 left-1/2 -translate-x-1/2 z-30 bg-emerald-600/95 hover:bg-emerald-500 text-white font-bold text-[10px] px-4 py-1.5 rounded-lg shadow-md border border-emerald-500/30 transition-all flex items-center gap-1.5 backdrop-blur-sm whitespace-nowrap"
-          >
-            <Maximize className="w-3 h-3" />
-            Open Street View
-          </a>
         </>
       ) : (
         <div className="flex-1 flex flex-col items-center justify-center p-8 text-center text-slate-400">

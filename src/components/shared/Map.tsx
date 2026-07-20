@@ -26,6 +26,7 @@ interface MapProps {
   pickerLng?: number;
   initialBoundary?: [number, number][];
   onLocationSelected?: (data: LocationSelectedData) => void;
+  className?: string;
 }
 
 // ─── Math Helpers ──────────────────────────────────────────────────
@@ -63,7 +64,8 @@ export const Map: React.FC<MapProps> = ({
   pickerLat = 16.3067,
   pickerLng = 80.4365,
   initialBoundary = [],
-  onLocationSelected
+  onLocationSelected,
+  className = ''
 }) => {
   const mapContainer = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
@@ -250,9 +252,22 @@ export const Map: React.FC<MapProps> = ({
     const map = mapboxService.initializeMap(mapContainer.current, center, zoom);
     mapRef.current = map;
 
+    const geolocate = new mapboxgl.GeolocateControl({
+      positionOptions: { enableHighAccuracy: true },
+      trackUserLocation: true,
+      showUserHeading: true
+    });
+    map.addControl(geolocate, 'bottom-right');
+
     map.on('style.load', () => {
       setLoading(false);
       map.resize();
+
+      if (mode === 'view') {
+        setTimeout(() => {
+          geolocate.trigger();
+        }, 1200);
+      }
 
       // Setup picker marker
       if (mode === 'picker') {
@@ -451,7 +466,7 @@ export const Map: React.FC<MapProps> = ({
   };
 
   return (
-    <div className="relative w-full h-full min-h-[350px] rounded-2xl overflow-hidden border border-white/10 shadow-lg">
+    <div className={`relative w-full h-full min-h-[350px] rounded-2xl overflow-hidden border border-white/10 shadow-lg ${className}`}>
       <div ref={mapContainer} className="w-full h-full absolute inset-0"></div>
 
       {loading && (
