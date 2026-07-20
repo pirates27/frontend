@@ -101,9 +101,11 @@ export const BuyerDashboard = () => {
   };
 
   const heroSlides = [
-    { title: 'Find Your Perfect Piece of Land', subtitle: 'Discover verified agricultural properties across India.', cta: 'Explore Farms', image: '/images/hero_agriculture.png' },
-    { title: 'Build Your Dream Home Today', subtitle: 'Explore premium residential plots with clear titles.', cta: 'View Residential', image: '/images/hero_residential.png' },
-    { title: 'Prime Commercial Spaces', subtitle: 'High ROI commercial lands in rapidly growing hubs.', cta: 'View Commercial', image: '/images/hero_commercial.png' }
+    { title: 'AI-Powered Insights', subtitle: 'Get smart recommendations and answers for your land queries.', cta: 'Ask AI', image: 'https://i.ibb.co/1Y111NdG/ai.png' },
+    { title: 'Explore in 360°', subtitle: 'Experience properties virtually with our immersive LandLense technology.', cta: 'View 360°', image: 'https://i.ibb.co/xS14Sht7/lens.png' },
+    { title: 'Build Your Future', subtitle: 'Find the perfect plots for your next big construction project.', cta: 'Start Building', image: 'https://i.ibb.co/LWVw1BW/buld.png' },
+    { title: 'Interactive Mapping', subtitle: 'Discover properties easily with our advanced interactive map.', cta: 'Open Map', image: 'https://i.ibb.co/jPY8RxBB/map.png' },
+    { title: 'Secure & Verified', subtitle: 'Invest with confidence in 100% verified properties and clear titles.', cta: 'View Verified', image: 'https://i.ibb.co/jc8q9gm/security.png' }
   ];
 
   useEffect(() => {
@@ -314,7 +316,7 @@ export const BuyerDashboard = () => {
                 <div className="absolute top-0 right-0 w-64 h-64 bg-cyan-500/10 rounded-full blur-[80px] pointer-events-none" />
                 
                 {/* Carousel Area */}
-                <div className="relative h-[200px] w-full">
+                <div className="relative h-[200px] w-full rounded-2xl overflow-hidden border border-white/[0.05] shadow-2xl">
                   <AnimatePresence mode="wait">
                     <motion.div
                       key={heroSlideIndex}
@@ -324,29 +326,23 @@ export const BuyerDashboard = () => {
                       transition={{ duration: 0.4 }}
                       className="absolute inset-0 flex items-center justify-between"
                     >
-                       {/* Left side text */}
-                       <div className="w-[55%] flex flex-col justify-center relative z-10">
-                          <h1 className="text-xl font-bold text-white mb-2 leading-tight">{heroSlides[heroSlideIndex].title}</h1>
-                          <p className="text-dark-400 text-[10px] mb-4">{heroSlides[heroSlideIndex].subtitle}</p>
-                          <button className="bg-primary-600 hover:bg-primary-500 text-white text-[10px] font-bold px-4 py-2 rounded-xl shadow-lg shadow-primary-500/20 w-max transition-all active:scale-95">
-                            {heroSlides[heroSlideIndex].cta}
-                          </button>
+                       {/* Background image stretched to cover full section */}
+                       <div className="absolute inset-0 z-0 flex items-center justify-center overflow-hidden pointer-events-none">
+                         <img src={heroSlides[heroSlideIndex].image} alt="Hero Illustration" className="w-full h-full object-cover opacity-60 mix-blend-screen" />
                        </div>
                        
-                       {/* Right side illustration (Placeholder) */}
-                       <div className="w-[45%] h-full flex items-center justify-end relative z-0">
-                         {/* Optional masking to blend solid background images nicely */}
-                         <img src={heroSlides[heroSlideIndex].image} alt="Hero Illustration" className="h-full w-full object-cover rounded-2xl opacity-90 mix-blend-lighten" />
+                       {/* Overlay text over the full width */}
+                       <div className="w-full h-full flex flex-col justify-center relative z-10 p-4 bg-gradient-to-r from-dark-950/90 via-dark-950/40 to-transparent pointer-events-none">
+                          <h1 className="text-xl font-bold text-white mb-2 leading-tight drop-shadow-lg max-w-[60%]">{heroSlides[heroSlideIndex].title}</h1>
+                          <p className="text-white text-[10px] mb-4 max-w-[55%] drop-shadow-md font-medium">{heroSlides[heroSlideIndex].subtitle}</p>
+                          <button className="pointer-events-auto group relative overflow-hidden bg-primary-600/90 backdrop-blur-sm text-white text-[11px] font-bold px-5 py-2.5 rounded-xl w-max transition-all duration-300 hover:bg-primary-500 active:scale-95 flex items-center gap-2 border border-primary-500/50 hover:border-white/40">
+                            <span className="relative z-10">{heroSlides[heroSlideIndex].cta}</span>
+                            <ChevronRight className="w-3.5 h-3.5 relative z-10 transition-transform duration-300 group-hover:translate-x-1" />
+                            <div className="absolute inset-0 bg-white/0 group-hover:bg-white/10 transition-colors duration-300" />
+                          </button>
                        </div>
                     </motion.div>
                   </AnimatePresence>
-                </div>
-
-                {/* Slider Indicators */}
-                <div className="flex justify-center gap-1.5 mt-2 mb-2 relative z-10">
-                  {heroSlides.map((_, i) => (
-                    <button key={i} onClick={() => setHeroSlideIndex(i)} className={`h-1.5 rounded-full transition-all duration-300 ${i === heroSlideIndex ? 'w-5 bg-primary-400' : 'w-1.5 bg-white/20 hover:bg-white/40'}`} />
-                  ))}
                 </div>
                 
               </div>
@@ -358,16 +354,16 @@ export const BuyerDashboard = () => {
                 </div>
                 <div className="grid grid-cols-4 gap-2">
                   {[
-                    { id: 'AGRICULTURAL', label: 'Agricultural', color: 'bg-emerald-500/10 border-emerald-500/20', text: 'text-emerald-400' },
-                    { id: 'RESIDENTIAL', label: 'Residential', color: 'bg-cyan-500/10 border-cyan-500/20', text: 'text-cyan-400' },
-                    { id: 'COMMERCIAL', label: 'Commercial', color: 'bg-primary-500/10 border-primary-500/20', text: 'text-primary-400' },
-                    { id: 'INDUSTRIAL', label: 'Industrial', color: 'bg-amber-500/10 border-amber-500/20', text: 'text-amber-400' },
+                    { id: 'AGRICULTURAL', label: 'Agricultural', image: 'https://i.ibb.co/60v5FYDV/AGRI.png' },
+                    { id: 'RESIDENTIAL', label: 'Residential', image: 'https://i.ibb.co/PsHG0SXN/HOME.png' },
+                    { id: 'COMMERCIAL', label: 'Commercial', image: 'https://i.ibb.co/5WJXZKxf/comersial.png' },
+                    { id: 'INDUSTRIAL', label: 'Industrial', image: 'https://i.ibb.co/jkmhLV7J/INDUSTRY.png' },
                   ].map(cat => {
                     const isActive = filters.category === cat.id;
                     return (
                       <button key={cat.id} onClick={() => handleCategoryClick(cat.id)} className="flex flex-col items-center gap-2 w-full">
-                        <div className={`w-14 h-14 rounded-full border flex items-center justify-center transition-transform active:scale-95 mx-auto ${isActive ? 'bg-primary-500 border-primary-500 text-white shadow-lg shadow-primary-500/30' : `${cat.color} ${cat.text}`}`}>
-                           <MapIcon className="w-6 h-6" />
+                        <div className={`flex items-center justify-center transition-transform active:scale-95 mx-auto ${isActive ? 'scale-110 drop-shadow-[0_0_8px_rgba(56,189,248,0.5)]' : 'opacity-90'}`}>
+                           <img src={cat.image} alt={cat.label} className="w-12 h-12 object-contain drop-shadow-md" />
                         </div>
                         <span className={`text-[10px] font-semibold text-center leading-tight break-words w-full ${isActive ? 'text-primary-400' : 'text-white'}`}>{cat.label}</span>
                       </button>
