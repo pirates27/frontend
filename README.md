@@ -1,7 +1,7 @@
 # LandLens 🌍🔍
 
 <p align="center">
-  <img src="./public/logo.png" alt="LandLens Logo" width="250" style="border-radius: 25px;"/>
+  <img src="./public/logo.png" alt="LandLens Logo" width="250"/>
 </p>
 
 ### 🚀 **Live Production URL:** [https://dpyyh7torlown.cloudfront.net](https://dpyyh7torlown.cloudfront.net)
