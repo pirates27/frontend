@@ -75,12 +75,32 @@ Please ensure all pull requests pass TypeScript compilation (`npm run build`) be
 LandLens uses a highly available, decoupled AWS architecture. The frontend is served globally via CloudFront CDN, while API requests are securely proxied to the backend running in private subnets on ECS Fargate.
 
 ```mermaid
-graph LR
-    Client((Client)) -->|HTTPS| CF[CloudFront CDN]
-    CF -->|Static UI| S3[(S3 Bucket)]
-    CF -->|/api/*| ALB[AWS ALB]
-    ALB --> ECS[ECS Fargate]
-    ECS -->|Egress IP| DB[(Hostinger MySQL)]
+graph TD
+    Client((Client / Browser))
+    
+    subgraph Frontend [AWS Edge & Storage]
+        CF[Amazon CloudFront CDN]
+        S3[Amazon S3 Bucket<br>Static Assets]
+    end
+    
+    subgraph Backend VPC [AWS VPC - ap-south-1]
+        ALB[Application Load Balancer]
+        
+        subgraph Private Subnets
+            ECS[ECS Fargate Tasks<br>Spring Boot API]
+        end
+        
+        NAT[NAT Gateway]
+    end
+    
+    DB[(Hostinger Remote MySQL)]
+
+    Client -->|1. HTTPS Request| CF
+    CF -->|2. Fetch Static UI| S3
+    CF -->|3. Route /api/*| ALB
+    ALB -->|4. HTTP 8080| ECS
+    ECS -->|5. DB Queries| NAT
+    NAT -->|6. Egress IP| DB
 ```
 
 ### Deployment Workflows
@@ -106,32 +126,56 @@ How the frontend communicates with the backend APIs via CloudFront proxy.
 
 ```mermaid
 sequenceDiagram
-    autonumber
-    actor User as User / Browser
-    participant CF as CloudFront / S3
-    participant API as ALB / ECS Fargate
+    participant User as User / Browser
+    participant CloudFront as AWS CloudFront
+    participant ALB as AWS ALB
+    participant Spring as Spring Boot (ECS)
     participant DB as MySQL DB
 
-    User->>CF: Load React App
-    CF-->>User: Return App Assets
-    User->>API: Send API Request (/api/*)
-    API->>DB: Read / Write Operations
-    API-->>User: Return JSON Response
+    User->>CloudFront: 1. Navigate to https://dpyyh7torlown...
+    CloudFront-->>User: 2. Return React UI (from S3)
+    
+    User->>CloudFront: 3. POST /api/properties (JWT)
+    CloudFront->>ALB: 4. Proxy Request to Backend
+    ALB->>Spring: 5. Route to Target Group
+    
+    Spring->>Spring: 6. Validate JWT Token
+    Spring->>DB: 7. Insert Property Record
+    DB-->>Spring: 8. Return Confirmation
+    
+    Spring-->>ALB: 9. HTTP 201 Created
+    ALB-->>CloudFront: 10. HTTP 201 Created
+    CloudFront-->>User: 11. Display Success Message
 ```
 
 ### Property Verification State Machine
-This diagram illustrates the lifecycle of a property listing through AI and Government verification.
+This diagram illustrates the lifecycle of a property listing as it goes through the AI and Government verification workflow.
 
 ```mermaid
 stateDiagram-v2
-    direction LR
-    [*] --> Submitted
-    Submitted --> AI_Check: Run OCR & Trust Score
-    AI_Check --> Govt_Audit: AI Passed
-    AI_Check --> Rejected: Fraud / Low Score
-    Govt_Audit --> Approved: Verified
-    Govt_Audit --> Rejected: Declined
-    Approved --> Live: Marketplace Listing
+    [*] --> UPLOADED : User Submits Land Details
+    
+    UPLOADED --> AI_VERIFICATION_PENDING : Trigger OCR & AI Checks
+    
+    state AI_VERIFICATION_PENDING {
+        [*] --> ExtractingDocuments
+        ExtractingDocuments --> CalculatingTrustScore
+        CalculatingTrustScore --> CheckingOverlap
+    }
+    
+    AI_VERIFICATION_PENDING --> AI_REJECTED : Low Trust Score / Fraud Detected
+    AI_VERIFICATION_PENDING --> PENDING_GOVT_AUDIT : AI Passed (Requires Manual Audit)
+    
+    PENDING_GOVT_AUDIT --> APPROVED : Inspector Approves
+    PENDING_GOVT_AUDIT --> REJECTED : Inspector Rejects
+    
+    APPROVED --> LIVE : Listed on Marketplace
+    LIVE --> DISPUTED : Community Reports Fraud
+    
+    DISPUTED --> PENDING_GOVT_AUDIT : Re-evaluation Triggered
+    
+    AI_REJECTED --> [*]
+    REJECTED --> [*]
 ```
 
 ---
