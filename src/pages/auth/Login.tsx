@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Mail, Lock, AlertCircle, Loader2 } from 'lucide-react';
 import { authService } from '../../services/auth.service';
+import slashVideo from '../../assets/slash.mp4';
+import mobSplashVideo from '../../assets/mob-spals.mp4';
 
 export const Login = () => {
   const navigate = useNavigate();
@@ -46,16 +48,36 @@ export const Login = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-white px-4 relative overflow-hidden">
+    <div className="min-h-screen flex items-center justify-center bg-white md:bg-black px-4 relative overflow-hidden">
       {/* Ambient Background Glows */}
-      <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-emerald-200/40 rounded-full blur-3xl animate-pulse"></div>
-      <div className="absolute bottom-1/3 right-1/4 w-80 h-80 bg-sky-200/40 rounded-full blur-3xl"></div>
+      <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-emerald-200/40 rounded-full blur-3xl animate-pulse md:hidden"></div>
+      <div className="absolute bottom-1/3 right-1/4 w-80 h-80 bg-sky-200/40 rounded-full blur-3xl md:hidden"></div>
+
+      {/* Desktop Background Video */}
+      <video 
+        src={slashVideo}
+        autoPlay
+        loop
+        muted
+        playsInline
+        className="hidden md:block absolute inset-0 w-full h-full object-cover z-0 opacity-60"
+      />
+
+      {/* Mobile Background Video */}
+      <video 
+        src={mobSplashVideo}
+        autoPlay
+        loop
+        muted
+        playsInline
+        className="block md:hidden absolute inset-0 w-full h-full object-cover z-0 opacity-60"
+      />
 
       {/* Decorative Image: Bottom Left */}
       <img 
         src="https://i.ibb.co/0yYZhMN0/f013f5e9-2f96-4f07-8dae-5d60087d250e.jpg"
         alt="Land aerial view"
-        className="absolute bottom-0 left-0 w-40 sm:w-[32rem] object-contain pointer-events-none z-0"
+        className="md:hidden absolute bottom-0 left-0 w-40 sm:w-[32rem] object-contain pointer-events-none z-0"
         style={{ WebkitMaskImage: 'linear-gradient(to top right, black 60%, transparent 100%)', maskImage: 'linear-gradient(to top right, black 60%, transparent 100%)' }}
       />
 
@@ -63,7 +85,7 @@ export const Login = () => {
       <img 
         src="https://i.ibb.co/ccmGDYJT/5ea71be8-b3a8-4cc7-84c6-ec15a7d6b37d.jpg"
         alt="Land scenery"
-        className="absolute top-0 right-0 w-40 sm:w-[32rem] object-contain pointer-events-none z-0"
+        className="md:hidden absolute top-0 right-0 w-40 sm:w-[32rem] object-contain pointer-events-none z-0"
         style={{ WebkitMaskImage: 'linear-gradient(to bottom left, black 60%, transparent 100%)', maskImage: 'linear-gradient(to bottom left, black 60%, transparent 100%)' }}
       />
 

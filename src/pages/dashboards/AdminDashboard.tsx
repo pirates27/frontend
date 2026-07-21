@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { propertyService } from '../../services/property.service';
 import { authService } from '../../services/auth.service';
-import type { AnalyticsDashboard, DeveloperKey, DeveloperKeyLog, Notification } from '../../models/property.models';
+import type { AnalyticsDashboard, DeveloperKey, DeveloperKeyLog, Notification, Property } from '../../models/property.models';
 import { DashboardLayout } from '../../components/layout/DashboardLayout';
 import { adminNavItems } from '../../components/layout/Sidebar';
 import { GlassCard } from '../../components/ui/GlassCard';
@@ -14,11 +14,11 @@ import { EmptyState } from '../../components/ui/EmptyState';
 import { ProgressBar } from '../../components/ui/ProgressBar';
 import {
   Eye, Search, Shield, AlertTriangle, Code2, Key, Plus,
-  Copy, Trash2, Clock, CheckCircle, Bell, Terminal, RefreshCw, Activity
+  Copy, Trash2, Clock, CheckCircle, Bell, Terminal, RefreshCw, Activity, MapPin
 } from 'lucide-react';
 
 export const AdminDashboard = () => {
-  const [activeTab, setActiveTab] = useState<'analytics' | 'developer' | 'notifications'>('analytics');
+  const [activeTab, setActiveTab] = useState<'analytics' | 'developer' | 'notifications' | 'properties'>('analytics');
 
   const [analytics, setAnalytics] = useState<AnalyticsDashboard | null>(null);
   const [analyticsLoading, setAnalyticsLoading] = useState(true);
@@ -26,6 +26,8 @@ export const AdminDashboard = () => {
   const [selectedKeyLogs, setSelectedKeyLogs] = useState<DeveloperKeyLog[] | null>(null);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [notifLoading, setNotifLoading] = useState(false);
+  const [allProperties, setAllProperties] = useState<Property[]>([]);
+  const [propsLoading, setPropsLoading] = useState(false);
 
   const [showCreateKey, setShowCreateKey] = useState(false);
   const [newKeyName, setNewKeyName] = useState('');
@@ -42,6 +44,27 @@ export const AdminDashboard = () => {
     loadAnalytics();
     loadKeys();
     loadNotifications();
+    loadProperties();
+  };
+
+  const loadProperties = async () => {
+    setPropsLoading(true);
+    try {
+      const res = await propertyService.getProperties();
+      setAllProperties(res);
+    } catch {}
+    finally { setPropsLoading(false); }
+  };
+
+  const handleDeleteProperty = async (id: string) => {
+    if (window.confirm("Are you sure you want to delete this property? This action is irreversible and will delete all associated data.")) {
+      try {
+        await propertyService.deleteProperty(id);
+        loadProperties();
+      } catch (err) {
+        console.error("Failed to delete property", err);
+      }
+    }
   };
 
   const loadAnalytics = async () => {
@@ -418,6 +441,51 @@ export const AdminDashboard = () => {
               description="You have no system notifications yet."
             />
           )}
+        </div>
+      )}
+      {/* ── PROPERTIES TAB ── */}
+      {activeTab === 'properties' && (
+        <div className="space-y-5">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-white font-bold text-lg">All Properties</h2>
+              <p className="text-dark-400 text-sm mt-0.5">Manage and remove properties across all statuses</p>
+            </div>
+            <Button variant="secondary" size="sm" icon={<RefreshCw className="w-3.5 h-3.5" />} onClick={loadProperties}>
+              Refresh
+            </Button>
+          </div>
+
+          <GlassCard padding="p-0">
+            {propsLoading ? (
+               <div className="p-8 text-center text-dark-500 text-sm">Loading properties...</div>
+            ) : allProperties.length > 0 ? (
+              <div className="divide-y divide-white/[0.04]">
+                {allProperties.map(p => (
+                  <div key={p.id} className="px-6 py-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 hover:bg-white/[0.02] transition-colors">
+                    <div className="space-y-1.5 flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="text-white font-semibold text-sm truncate">{p.title}</span>
+                        <Chip label={p.status} color={p.status === 'APPROVED' ? 'accent' : 'warning'} size="xs" dot />
+                      </div>
+                      <p className="text-dark-500 text-[11px] flex items-center gap-1 mt-1">
+                        <MapPin className="w-3 h-3" /> {p.village}, {p.district}
+                      </p>
+                    </div>
+                    <div className="flex gap-2 shrink-0">
+                      <Button variant="danger" size="xs" icon={<Trash2 className="w-3.5 h-3.5" />} onClick={() => handleDeleteProperty(p.id)}>
+                        Delete
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="p-10 text-center text-dark-500 text-sm">
+                No properties found in the system.
+              </div>
+            )}
+          </GlassCard>
         </div>
       )}
     </DashboardLayout>

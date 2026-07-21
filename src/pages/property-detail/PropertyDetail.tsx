@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowLeft, Calendar, AlertTriangle, CheckCircle, Image, Video,
-  FileText, Map as MapIcon, Clock, Shield, ExternalLink, Send, MessageSquare, MapPin, Share2, Heart, X, Sparkles, ChevronRight, Maximize
+  FileText, Map as MapIcon, Clock, Shield, ExternalLink, Send, MessageSquare, MapPin, Share2, Heart, X, Sparkles, ChevronRight, Maximize, Trash2
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -148,6 +148,17 @@ export const PropertyDetail = () => {
     }
   };
 
+  const handleDeleteProperty = async () => {
+    if (window.confirm("Are you sure you want to delete this property? This will also remove all associated schedules, documents, and data. This action cannot be undone.")) {
+      try {
+        await propertyService.deleteProperty(property!.id);
+        navigate('/admin');
+      } catch (err) {
+        console.error("Failed to delete property", err);
+      }
+    }
+  };
+
   if (loading) {
     return (
       <div className="h-screen bg-dark-950 flex flex-col items-center justify-center">
@@ -168,6 +179,11 @@ export const PropertyDetail = () => {
           <ArrowLeft className="w-5 h-5 text-white" />
         </button>
         <div className="flex items-center gap-3">
+          {authService.getUserRole() === 'ADMIN' && (
+            <button onClick={handleDeleteProperty} className="w-10 h-10 rounded-full bg-danger-500/80 backdrop-blur-md flex items-center justify-center border border-danger-500/30 active:scale-95 transition-transform shadow-lg">
+              <Trash2 className="w-5 h-5 text-white" />
+            </button>
+          )}
           <button className="w-10 h-10 rounded-full bg-dark-900/60 backdrop-blur-md flex items-center justify-center border border-white/[0.1] active:scale-95 transition-transform shadow-lg">
             <Share2 className="w-5 h-5 text-white" />
           </button>

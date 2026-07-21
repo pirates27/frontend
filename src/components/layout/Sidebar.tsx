@@ -187,6 +187,7 @@ export const govtNavItems = (fraudCount: number, unreadCount: number): NavItem[]
 
 export const adminNavItems = (unreadCount: number): NavItem[] => [
   { id: 'analytics', label: 'System Analytics', icon: BarChart3 },
+  { id: 'properties', label: 'All Properties', icon: Home },
   { id: 'developer', label: 'Developer Portal', icon: Key },
   { id: 'notifications', label: 'Notifications', icon: Bell, badge: unreadCount },
 ];

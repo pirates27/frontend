@@ -300,6 +300,10 @@
 ::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.18); }
 
 /* ─── Mapbox Branding ─────────────────────────────────────────────────── */
+.mapboxgl-ctrl-top-right {
+  top: 80px !important;
+}
+
 .mapboxgl-ctrl-logo,
 .mapboxgl-ctrl-attrib,
 .mapboxgl-ctrl-attrib-button,

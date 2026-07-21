@@ -257,7 +257,7 @@ export const Map: React.FC<MapProps> = ({
       trackUserLocation: true,
       showUserHeading: true
     });
-    map.addControl(geolocate, 'bottom-right');
+    map.addControl(geolocate, 'top-right');
 
     map.on('style.load', () => {
       setLoading(false);
