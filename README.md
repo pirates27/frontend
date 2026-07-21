@@ -1,8 +1,14 @@
 # LandLens 🌍🔍
 
+<p align="center">
+  <img src="./public/logo.png" alt="LandLens Logo" width="250"/>
+</p>
+
+### 🚀 **Live Production URL:** [https://dpyyh7torlown.cloudfront.net](https://dpyyh7torlown.cloudfront.net)
+
 An AI-powered government land verification portal designed to prevent real estate fraud, overlap claims, and forgery using AI trust scores, OCR verification, and 360° virtual tours.
 
-![LandLens Preview](https://i.ibb.co/ccmGDYJT/5ea71be8-b3a8-4cc7-84c6-ec15a7d6b37d.jpg)
+<!-- ![LandLens Preview](https://i.ibb.co/ccmGDYJT/5ea71be8-b3a8-4cc7-84c6-ec15a7d6b37d.jpg) -->
 
 ## 🚀 Features
 
@@ -69,7 +75,7 @@ Please ensure all pull requests pass TypeScript compilation (`npm run build`) be
 LandLens uses a highly available, decoupled AWS architecture. The frontend is served globally via CloudFront CDN, while API requests are securely proxied to the backend running in private subnets on ECS Fargate.
 
 ```mermaid
-graph TD
+graph LR
     Client((Client / Browser))
     
     subgraph Frontend [AWS Edge & Storage]
@@ -147,11 +153,13 @@ This diagram illustrates the lifecycle of a property listing as it goes through 
 
 ```mermaid
 stateDiagram-v2
+    direction LR
     [*] --> UPLOADED : User Submits Land Details
     
     UPLOADED --> AI_VERIFICATION_PENDING : Trigger OCR & AI Checks
     
     state AI_VERIFICATION_PENDING {
+        direction LR
         [*] --> ExtractingDocuments
         ExtractingDocuments --> CalculatingTrustScore
         CalculatingTrustScore --> CheckingOverlap
