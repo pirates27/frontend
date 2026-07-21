@@ -49,7 +49,7 @@ export const Login = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-white md:bg-black px-4 relative overflow-hidden">
+    <div className="min-h-screen flex items-center justify-center bg-white px-4 relative overflow-hidden">
       {/* Ambient Background Glows */}
       <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-emerald-200/40 rounded-full blur-3xl animate-pulse md:hidden"></div>
       <div className="absolute bottom-1/3 right-1/4 w-80 h-80 bg-sky-200/40 rounded-full blur-3xl md:hidden"></div>
@@ -61,7 +61,7 @@ export const Login = () => {
         muted
         playsInline
         onEnded={() => setVideoFinished(true)}
-        className={`hidden md:block absolute inset-0 w-full h-full object-cover z-0 transition-opacity duration-1000 ${videoFinished ? 'opacity-0' : 'opacity-60'}`}
+        className={`hidden md:block absolute inset-0 w-full h-full object-cover z-0 transition-opacity duration-1000 ${videoFinished ? 'opacity-0' : 'opacity-100'}`}
       />
 
       {/* Mobile Background Video */}
@@ -71,20 +71,20 @@ export const Login = () => {
         muted
         playsInline
         onEnded={() => setVideoFinished(true)}
-        className={`block md:hidden absolute inset-0 w-full h-full object-cover z-0 transition-opacity duration-1000 ${videoFinished ? 'opacity-0' : 'opacity-60'}`}
+        className={`block md:hidden absolute inset-0 w-full h-full object-cover z-0 transition-opacity duration-1000 ${videoFinished ? 'opacity-0' : 'opacity-100'}`}
       />
 
       {/* Decorative Images */}
       <img 
         src="https://i.ibb.co/0yYZhMN0/f013f5e9-2f96-4f07-8dae-5d60087d250e.jpg"
         alt="Land aerial view"
-        className={`md:hidden absolute bottom-0 left-0 w-40 sm:w-[32rem] object-contain pointer-events-none z-0 transition-opacity duration-1000 ${videoFinished ? 'opacity-100' : 'opacity-0'}`}
+        className={`absolute bottom-0 left-0 w-40 sm:w-[32rem] object-contain pointer-events-none z-0 transition-opacity duration-1000 ${videoFinished ? 'opacity-100' : 'opacity-0'}`}
         style={{ WebkitMaskImage: 'linear-gradient(to top right, black 60%, transparent 100%)', maskImage: 'linear-gradient(to top right, black 60%, transparent 100%)' }}
       />
       <img 
         src="https://i.ibb.co/ccmGDYJT/5ea71be8-b3a8-4cc7-84c6-ec15a7d6b37d.jpg"
         alt="Land scenery"
-        className={`md:hidden absolute top-0 right-0 w-40 sm:w-[32rem] object-contain pointer-events-none z-0 transition-opacity duration-1000 ${videoFinished ? 'opacity-100' : 'opacity-0'}`}
+        className={`absolute top-0 right-0 w-40 sm:w-[32rem] object-contain pointer-events-none z-0 transition-opacity duration-1000 ${videoFinished ? 'opacity-100' : 'opacity-0'}`}
         style={{ WebkitMaskImage: 'linear-gradient(to bottom left, black 60%, transparent 100%)', maskImage: 'linear-gradient(to bottom left, black 60%, transparent 100%)' }}
       />
 

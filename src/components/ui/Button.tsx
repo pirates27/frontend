@@ -15,44 +15,37 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
 
 const variantStyles: Record<ButtonVariant, string> = {
   primary: `
-    bg-gradient-to-r from-primary-600 to-primary-700
-    hover:from-primary-500 hover:to-primary-600
-    text-white shadow-lg shadow-primary-900/30
-    hover:shadow-primary-800/40 hover:shadow-xl
-    border border-primary-500/40
+    bg-primary-500 hover:bg-primary-600
+    text-gray-900 font-extrabold shadow-md shadow-primary-500/20
+    border border-primary-600
   `,
   secondary: `
-    bg-gradient-to-r from-cyan-500/20 to-primary-600/20
-    hover:from-cyan-500/30 hover:to-primary-600/30
-    text-cyan-400 border border-cyan-500/30
-    hover:border-cyan-400/50
+    bg-gray-100 hover:bg-gray-200
+    text-gray-900 font-bold border border-gray-200
   `,
   accent: `
-    bg-gradient-to-r from-accent-500 to-accent-600
-    hover:from-accent-400 hover:to-accent-500
-    text-white shadow-lg shadow-accent-900/30
-    border border-accent-500/40
+    bg-emerald-600 hover:bg-emerald-700
+    text-white font-bold shadow-md shadow-emerald-500/20
+    border border-emerald-600
   `,
   danger: `
-    bg-gradient-to-r from-danger-600 to-danger-700
-    hover:from-danger-500 hover:to-danger-600
-    text-white shadow-lg shadow-danger-900/30
-    border border-danger-500/40
+    bg-red-600 hover:bg-red-700
+    text-white font-bold shadow-md shadow-red-500/20
+    border border-red-600
   `,
   ghost: `
-    bg-transparent hover:bg-white/[0.06]
-    text-dark-300 hover:text-white
-    border border-transparent hover:border-white/10
+    bg-transparent hover:bg-gray-100
+    text-gray-700 hover:text-gray-900 font-bold
+    border border-transparent hover:border-gray-200
   `,
   outline: `
-    bg-transparent hover:bg-white/[0.05]
-    text-dark-300 hover:text-white
-    border border-white/15 hover:border-white/25
+    bg-white hover:bg-gray-50
+    text-gray-800 font-bold
+    border border-gray-300 hover:border-gray-400 shadow-xs
   `,
   glass: `
-    bg-white/[0.05] hover:bg-white/[0.09]
-    text-white border border-white/10
-    hover:border-white/20 backdrop-blur-sm
+    bg-white hover:bg-gray-50
+    text-gray-900 font-bold border border-gray-200 shadow-xs
   `,
 };
 

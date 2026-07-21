@@ -17,26 +17,27 @@ import type {
   DeveloperKey, DeveloperKeyLog, PropertyDocument, AiVerification,
   PropertyImage, PropertyVideo
 } from '../../models/property.models';
+import { useNavigate } from 'react-router-dom';
 import {
   Eye, CheckCircle, AlertOctagon, Key, Bell, Shield, X,
   Copy, Trash2, Terminal, Activity, Play, Clock, Code2,
-  Book, Plus, RefreshCw, Search, Map as MapIcon, Image, Video, FileText
+  Book, Plus, RefreshCw, Search, Map as MapIcon, Image, Video, FileText, LogOut, MessageSquare, BarChart3
 } from 'lucide-react';
 
 const PropertyCard = React.memo(({ p, onClick, isSelected }: { p: Property; onClick: () => void; isSelected: boolean }) => (
   <div
     onClick={onClick}
-    className={`glass-card !p-0 overflow-hidden cursor-pointer transition-all duration-200 hover:-translate-y-0.5
-      ${isSelected ? '!border-primary-500/40 shadow-[0_0_20px_rgba(37,99,235,0.15)]' : ''}`}
+    className={`bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden cursor-pointer transition-all duration-200 hover:-translate-y-0.5
+      ${isSelected ? '!border-primary-500 shadow-[0_0_20px_rgba(37,99,235,0.15)] bg-primary-50/20' : ''}`}
   >
-    <div className="relative h-28 bg-dark-800 overflow-hidden">
+    <div className="relative h-28 bg-gray-100 overflow-hidden">
       {p.threeSixtyImageUrl ? (
         <>
           <iframe src={p.threeSixtyImageUrl} style={{ width: '117.64%', height: '117.64%', border: 'none', position: 'absolute', top: 0, left: 0 }} className="pointer-events-none" allow="accelerometer; gyroscope" />
         </>
       ) : (
-        <div className="absolute inset-0 bg-gradient-to-br from-dark-800 to-dark-900 flex items-center justify-center">
-          <Search className="w-8 h-8 text-dark-700" />
+        <div className="absolute inset-0 bg-gray-100 flex items-center justify-center">
+          <Search className="w-8 h-8 text-gray-300" />
         </div>
       )}
       <div className="absolute top-2 right-2">
@@ -44,18 +45,18 @@ const PropertyCard = React.memo(({ p, onClick, isSelected }: { p: Property; onCl
       </div>
     </div>
     <div className="p-4 space-y-2">
-      <h3 className="text-white font-semibold text-sm truncate">{p.title}</h3>
-      <p className="text-dark-500 text-[10px]">📍 {p.village}, {p.district}</p>
+      <h3 className="text-gray-900 font-bold text-sm truncate">{p.title}</h3>
+      <p className="text-gray-500 text-[10px]">📍 {p.village}, {p.district}</p>
       <div className="flex gap-2 text-[10px]">
-        <span className="bg-white/[0.04] rounded-md px-2 py-1 text-dark-400">{p.area}ac</span>
-        <span className="bg-accent-500/[0.08] rounded-md px-2 py-1 text-accent-400">₹{p.price.toLocaleString('en-IN')}</span>
+        <span className="bg-gray-100 rounded-md px-2 py-1 text-gray-600 font-medium">{p.area}ac</span>
+        <span className="bg-emerald-50 rounded-md px-2 py-1 text-emerald-700 font-bold">₹{p.price.toLocaleString('en-IN')}</span>
       </div>
     </div>
   </div>
 ));
 
 export const GovtDashboard = () => {
-
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'analytics' | 'queue' | 'disputes' | 'approved' | 'api' | 'notifications'>('analytics');
   const [apiSubTab, setApiSubTab] = useState<'keys' | 'docs' | 'sandbox'>('keys');
 
@@ -281,32 +282,32 @@ export const GovtDashboard = () => {
       <motion.div
         initial={{ opacity: 0, x: 20 }}
         animate={{ opacity: 1, x: 0 }}
-        className="w-full lg:w-[500px] xl:w-[550px] shrink-0 glass-card p-5 lg:h-full lg:overflow-y-auto scrollbar-premium"
+        className="w-full lg:w-[500px] xl:w-[550px] shrink-0 bg-white border border-gray-200 shadow-xl rounded-2xl p-5 lg:h-full lg:overflow-y-auto scrollbar-premium text-gray-900"
       >
-        <div className="flex justify-between items-start border-b border-white/[0.06] pb-4 mb-4">
+        <div className="flex justify-between items-start border-b border-gray-200 pb-4 mb-4">
           <div>
-            <h3 className="text-white font-semibold text-sm">Inspection Panel</h3>
-            <p className="text-dark-500 text-[10px] mt-0.5 truncate max-w-[260px]">{selectedProperty.title}</p>
+            <h3 className="text-gray-900 font-black text-base">Inspection Panel</h3>
+            <p className="text-gray-500 text-[10px] font-semibold mt-0.5 truncate max-w-[260px]">{selectedProperty.title}</p>
           </div>
-          <button onClick={() => setSelectedProperty(null)} className="text-dark-500 hover:text-white transition-colors">
+          <button onClick={() => setSelectedProperty(null)} className="text-gray-400 hover:text-gray-800 transition-colors">
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Verification form (Moved to top) */}
         {selectedProperty.status === 'PENDING_GOVT' && (
-          <div className="space-y-3 mb-6 pb-6 border-b border-white/[0.06]">
-            <h4 className="text-dark-400 text-[10px] font-semibold uppercase tracking-wider">Submit Verification Decision</h4>
+          <div className="space-y-3 mb-6 pb-6 border-b border-gray-200">
+            <h4 className="text-gray-700 text-[10px] font-bold uppercase tracking-wider">Submit Verification Decision</h4>
             <div className="flex gap-2">
               <button
                 onClick={() => setVerifyStatus('APPROVED')}
-                className={`flex-1 py-2 rounded-xl text-xs font-bold border transition-all ${verifyStatus === 'APPROVED' ? 'bg-accent-500/20 border-accent-500/40 text-accent-400' : 'bg-white/[0.03] border-white/10 text-dark-500'}`}
+                className={`flex-1 py-2 rounded-xl text-xs font-bold border transition-all ${verifyStatus === 'APPROVED' ? 'bg-emerald-50 border-emerald-300 text-emerald-700' : 'bg-gray-50 border-gray-200 text-gray-500'}`}
               >
                 ✓ Approve
               </button>
               <button
                 onClick={() => setVerifyStatus('REJECTED')}
-                className={`flex-1 py-2 rounded-xl text-xs font-bold border transition-all ${verifyStatus === 'REJECTED' ? 'bg-danger-500/20 border-danger-500/40 text-danger-400' : 'bg-white/[0.03] border-white/10 text-dark-500'}`}
+                className={`flex-1 py-2 rounded-xl text-xs font-bold border transition-all ${verifyStatus === 'REJECTED' ? 'bg-red-50 border-red-300 text-red-700' : 'bg-gray-50 border-gray-200 text-gray-500'}`}
               >
                 ✕ Reject
               </button>
@@ -321,7 +322,7 @@ export const GovtDashboard = () => {
                 <button
                   key={i}
                   onClick={() => setVerifyRemarks(prev => prev ? `${prev} ${msg}` : msg)}
-                  className="px-2 py-1 bg-white/[0.04] hover:bg-white/[0.08] rounded border border-white/[0.06] text-[9px] text-dark-300 hover:text-white transition-colors text-left leading-tight"
+                  className="px-2 py-1 bg-gray-100 hover:bg-gray-200 rounded border border-gray-200 text-[9px] text-gray-700 font-semibold transition-colors text-left leading-tight"
                 >
                   + {msg}
                 </button>
@@ -333,16 +334,17 @@ export const GovtDashboard = () => {
               onChange={e => setVerifyRemarks(e.target.value)}
               placeholder="Official inspection remarks..."
               rows={3}
-              className={`input-dark resize-none ${verifyError && !verifyRemarks.trim() ? '!border-danger-500/60' : ''}`}
+              className={`w-full bg-gray-50 border border-gray-200 text-gray-900 placeholder-gray-400 focus:outline-none focus:border-primary-500 rounded-xl p-3 text-xs resize-none ${verifyError && !verifyRemarks.trim() ? '!border-red-500' : ''}`}
             />
             {verifyError && !verifyRemarks.trim() && (
-              <p className="text-danger-400 text-[10px]">Remarks are required before submission.</p>
+              <p className="text-red-600 text-[10px] font-bold">Remarks are required before submission.</p>
             )}
             <Button
               variant={verifyStatus === 'APPROVED' ? 'accent' : 'danger'}
               size="sm" fullWidth
               loading={verifyLoading}
               onClick={submitVerification}
+              className="font-bold"
             >
               Submit {verifyStatus} Decision
             </Button>
@@ -351,9 +353,9 @@ export const GovtDashboard = () => {
 
         {/* Action Bar (Re-verify) */}
         <div className="mb-5 flex items-center justify-between">
-          <h4 className="text-dark-400 text-[10px] font-semibold uppercase tracking-wider">Property Overview</h4>
+          <h4 className="text-gray-700 text-[10px] font-bold uppercase tracking-wider">Property Overview</h4>
           <Button
-            variant="glass" size="xs"
+            variant="secondary" size="xs"
             loading={aiLoading}
             onClick={() => runAiVerify(selectedProperty.id)}
             icon={<Shield className="w-3.5 h-3.5" />}
@@ -363,7 +365,7 @@ export const GovtDashboard = () => {
         </div>
 
         {/* 3D Map / Map Placeholder */}
-        <div className="relative h-40 rounded-xl overflow-hidden bg-dark-900 border border-white/[0.06] mb-5">
+        <div className="relative h-40 rounded-xl overflow-hidden bg-gray-100 border border-gray-200 mb-5">
           {selectedProperty.threeSixtyImageUrl ? (
             <iframe src={selectedProperty.threeSixtyImageUrl} className="w-full h-full border-none pointer-events-none" allow="accelerometer; gyroscope" />
           ) : (
@@ -371,45 +373,45 @@ export const GovtDashboard = () => {
               <Map mode="detail" properties={[selectedProperty]} />
             </div>
           )}
-          <div className="absolute bottom-2 left-2 right-2 bg-dark-950/80 backdrop-blur-md p-2 rounded-lg border border-white/[0.06]">
-            <p className="text-white text-xs font-semibold truncate">{selectedProperty.address || selectedProperty.village}</p>
-            <p className="text-dark-400 text-[10px] truncate">{selectedProperty.district}, {selectedProperty.state} - {selectedProperty.pincode}</p>
+          <div className="absolute bottom-2 left-2 right-2 bg-white/90 backdrop-blur-md p-2 rounded-lg border border-gray-200 shadow-sm">
+            <p className="text-gray-900 text-xs font-bold truncate">{selectedProperty.address || selectedProperty.village}</p>
+            <p className="text-gray-500 text-[10px] truncate font-medium">{selectedProperty.district}, {selectedProperty.state} - {selectedProperty.pincode}</p>
           </div>
         </div>
 
         {/* Property Details Grid */}
         <div className="grid grid-cols-2 gap-2 mb-5">
-          <div className="bg-white/[0.03] p-2.5 rounded-xl border border-white/[0.06]">
-            <p className="text-dark-500 text-[10px]">Area</p>
-            <p className="text-white text-xs font-semibold">{selectedProperty.area} Acres</p>
+          <div className="bg-gray-50 p-2.5 rounded-xl border border-gray-200">
+            <p className="text-gray-500 text-[10px] font-semibold">Area</p>
+            <p className="text-gray-900 text-xs font-black">{selectedProperty.area} Acres</p>
           </div>
-          <div className="bg-white/[0.03] p-2.5 rounded-xl border border-white/[0.06]">
-            <p className="text-dark-500 text-[10px]">Price</p>
-            <p className="text-white text-xs font-semibold">₹{selectedProperty.price?.toLocaleString('en-IN')}</p>
+          <div className="bg-gray-50 p-2.5 rounded-xl border border-gray-200">
+            <p className="text-gray-500 text-[10px] font-semibold">Price</p>
+            <p className="text-gray-900 text-xs font-black">₹{selectedProperty.price?.toLocaleString('en-IN')}</p>
           </div>
-          <div className="bg-white/[0.03] p-2.5 rounded-xl border border-white/[0.06]">
-            <p className="text-dark-500 text-[10px]">Category</p>
-            <p className="text-white text-xs font-semibold">{selectedProperty.category}</p>
+          <div className="bg-gray-50 p-2.5 rounded-xl border border-gray-200">
+            <p className="text-gray-500 text-[10px] font-semibold">Category</p>
+            <p className="text-gray-900 text-xs font-black">{selectedProperty.category}</p>
           </div>
-          <div className="bg-white/[0.03] p-2.5 rounded-xl border border-white/[0.06]">
-            <p className="text-dark-500 text-[10px]">Survey No.</p>
-            <p className="text-white text-xs font-semibold">{selectedProperty.surveyNumber}</p>
+          <div className="bg-gray-50 p-2.5 rounded-xl border border-gray-200">
+            <p className="text-gray-500 text-[10px] font-semibold">Survey No.</p>
+            <p className="text-gray-900 text-xs font-black">{selectedProperty.surveyNumber}</p>
           </div>
         </div>
 
         {/* Uploaded Media */}
         {(propertyImages.length > 0 || propertyVideos.length > 0) && (
           <div className="mb-5">
-            <h4 className="text-dark-400 text-[10px] font-semibold uppercase tracking-wider mb-3">Uploaded Media</h4>
+            <h4 className="text-gray-700 text-[10px] font-bold uppercase tracking-wider mb-3">Uploaded Media</h4>
             <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-premium">
               {propertyImages.map(img => (
-                <div key={img.id} className="relative w-20 h-20 shrink-0 rounded-lg overflow-hidden border border-white/[0.1]">
+                <div key={img.id} className="relative w-20 h-20 shrink-0 rounded-lg overflow-hidden border border-gray-200">
                   <img src={img.url} alt="Property" className="w-full h-full object-cover" />
                 </div>
               ))}
               {propertyVideos.map(vid => (
-                <div key={vid.id} className="relative w-20 h-20 shrink-0 rounded-lg overflow-hidden border border-white/[0.1] bg-dark-900 flex items-center justify-center">
-                  <Video className="w-6 h-6 text-dark-500" />
+                <div key={vid.id} className="relative w-20 h-20 shrink-0 rounded-lg overflow-hidden border border-gray-200 bg-gray-100 flex items-center justify-center">
+                  <Video className="w-6 h-6 text-gray-400" />
                   <div className="absolute inset-0 flex items-center justify-center bg-black/40"><Play className="w-6 h-6 text-white opacity-80" /></div>
                 </div>
               ))}
@@ -420,7 +422,7 @@ export const GovtDashboard = () => {
         {/* AI Score */}
         {aiReport && (
           <div className="mb-5">
-            <h4 className="text-dark-400 text-[10px] font-semibold uppercase tracking-wider mb-3">AI Verification Report</h4>
+            <h4 className="text-gray-700 text-[10px] font-bold uppercase tracking-wider mb-3">AI Verification Report</h4>
             <div className="flex items-center gap-4">
               <CircularProgress
                 value={aiReport.aiTrustScore}
@@ -429,21 +431,21 @@ export const GovtDashboard = () => {
                 sublabel="Trust"
               />
               <div className="flex-1 grid grid-cols-2 gap-2 text-[10px]">
-                <div className="bg-white/[0.04] rounded-lg p-2 text-center">
-                  <p className="text-dark-500">Forgery</p>
-                  <p className={`font-bold mt-0.5 ${aiReport.forgeryScore > 30 ? 'text-danger-400' : 'text-white'}`}>{aiReport.forgeryScore}%</p>
+                <div className="bg-gray-50 border border-gray-200 rounded-lg p-2 text-center">
+                  <p className="text-gray-500 font-semibold">Forgery</p>
+                  <p className={`font-black mt-0.5 ${aiReport.forgeryScore > 30 ? 'text-red-600' : 'text-gray-900'}`}>{aiReport.forgeryScore}%</p>
                 </div>
-                <div className="bg-white/[0.04] rounded-lg p-2 text-center">
-                  <p className="text-dark-500">Duplicate</p>
-                  <p className={`font-bold mt-0.5 ${aiReport.duplicateScore > 10 ? 'text-danger-400' : 'text-white'}`}>{aiReport.duplicateScore}%</p>
+                <div className="bg-gray-50 border border-gray-200 rounded-lg p-2 text-center">
+                  <p className="text-gray-500 font-semibold">Duplicate</p>
+                  <p className={`font-black mt-0.5 ${aiReport.duplicateScore > 10 ? 'text-red-600' : 'text-gray-900'}`}>{aiReport.duplicateScore}%</p>
                 </div>
-                <div className="bg-white/[0.04] rounded-lg p-2 text-center">
-                  <p className="text-dark-500">Risk</p>
-                  <p className={`font-bold mt-0.5 ${aiReport.riskScore > 20 ? 'text-danger-400' : 'text-white'}`}>{aiReport.riskScore}%</p>
+                <div className="bg-gray-50 border border-gray-200 rounded-lg p-2 text-center">
+                  <p className="text-gray-500 font-semibold">Risk</p>
+                  <p className={`font-black mt-0.5 ${aiReport.riskScore > 20 ? 'text-red-600' : 'text-gray-900'}`}>{aiReport.riskScore}%</p>
                 </div>
-                <div className="bg-white/[0.04] rounded-lg p-2 text-center">
-                  <p className="text-dark-500">Owner</p>
-                  <p className={`font-bold mt-0.5 tracking-wide ${aiReport.ownershipMatch ? 'text-accent-400' : 'text-danger-400'}`}>{aiReport.ownershipMatch ? 'MATCH' : 'MISMATCH'}</p>
+                <div className="bg-gray-50 border border-gray-200 rounded-lg p-2 text-center">
+                  <p className="text-gray-500 font-semibold">Owner</p>
+                  <p className={`font-black mt-0.5 tracking-wide ${aiReport.ownershipMatch ? 'text-emerald-600' : 'text-red-600'}`}>{aiReport.ownershipMatch ? 'MATCH' : 'MISMATCH'}</p>
                 </div>
               </div>
             </div>
@@ -508,16 +510,39 @@ export const GovtDashboard = () => {
   };
 
   return (
-    <DashboardLayout
-      activeTab={activeTab}
-      onTabChange={(tab) => handleTabChange(tab as any)}
-      navItems={navItems}
-      role="GOVERNMENT_OFFICER"
-      title="Government Portal"
-      subtitle={`Inspector: ${currentUser?.firstName || 'Officer'}`}
-      unreadCount={unreadCount}
-      mobileNavItems={navItems}
-    >
+    <div className="min-h-screen bg-gray-50 text-gray-900 font-sans flex flex-col pb-28 relative overflow-x-hidden">
+      {/* ── TOP HEADER APP BAR ── */}
+      <div className="sticky top-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-b border-gray-200 px-4 sm:px-6 h-16 flex items-center justify-between shadow-xs">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-600 to-teal-600 flex items-center justify-center text-white font-black text-sm shadow-sm">
+            GV
+          </div>
+          <div>
+            <h1 className="text-gray-900 font-bold text-base leading-tight">Government Portal</h1>
+            <p className="text-gray-500 text-[11px]">Inspector: {currentUser?.firstName || 'Officer'}</p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setActiveTab('notifications')}
+            className="relative w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-gray-600 hover:bg-gray-200 transition-colors"
+          >
+            <Bell className="w-4 h-4" />
+            {unreadCount > 0 && (
+              <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-primary-600 rounded-full border-2 border-white" />
+            )}
+          </button>
+          <button
+            onClick={() => { authService.logout(); navigate('/auth/login'); }}
+            className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-gray-600 hover:bg-gray-200 transition-colors"
+          >
+            <LogOut className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+
+      <div className="px-4 sm:px-6 lg:px-8 py-6 space-y-6 max-w-7xl mx-auto w-full">
 
       {/* ── ANALYTICS ── */}
       <div className={`${activeTab === 'analytics' ? 'block' : 'hidden'} space-y-6`}>
@@ -870,33 +895,81 @@ export const GovtDashboard = () => {
       <div className={`${activeTab === 'notifications' ? 'block' : 'hidden'} space-y-5`}>
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-white font-bold text-lg">Notifications</h2>
-              <p className="text-dark-400 text-sm mt-0.5">Government portal alerts and verification updates</p>
+              <h2 className="text-gray-900 font-bold text-xl">Notifications</h2>
+              <p className="text-gray-500 text-sm mt-0.5">Government portal alerts and verification updates</p>
             </div>
             {unreadCount > 0 && <Chip label={`${unreadCount} unread`} color="danger" dot />}
           </div>
           {notifications.length > 0 ? (
             <div className="space-y-3">
               {notifications.map(n => (
-                <GlassCard key={n.id} className={`flex items-start justify-between gap-4 ${!n.isRead ? '!border-primary-500/20 !bg-primary-500/[0.04]' : ''}`}>
+                <div key={n.id} className={`bg-white border border-gray-200 rounded-2xl p-4 shadow-sm flex items-start justify-between gap-4 ${!n.isRead ? 'bg-primary-50/40 border-primary-200' : ''}`}>
                   <div className="flex-1 min-w-0">
-                    <h3 className="text-white font-semibold text-sm">{n.title}</h3>
-                    <p className="text-dark-400 text-xs mt-0.5 leading-relaxed">{n.message}</p>
-                    <p className="text-dark-600 text-[10px] mt-1.5 flex items-center gap-1">
+                    <h3 className="text-gray-900 font-semibold text-sm">{n.title}</h3>
+                    <p className="text-gray-600 text-xs mt-0.5 leading-relaxed">{n.message}</p>
+                    <p className="text-gray-400 text-[10px] mt-1.5 flex items-center gap-1">
                       <Clock className="w-3 h-3" />
                       {new Date(n.createdTime).toLocaleString()}
                     </p>
                   </div>
                   {!n.isRead
                     ? <Button variant="secondary" size="xs" onClick={() => markNotificationRead(n.id)}>Mark Read</Button>
-                    : <CheckCircle className="w-4 h-4 text-dark-600 shrink-0" />}
-                </GlassCard>
+                    : <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />}
+                </div>
               ))}
             </div>
           ) : (
             <EmptyState icon={<Bell className="w-8 h-8" />} title="No notifications" description="You're all caught up!" />
           )}
         </div>
-    </DashboardLayout>
+      </div>
+
+      {/* ── FLOATING CHAT / AI BUTTON ── */}
+      <button 
+        onClick={() => navigate('/buyer-dashboard')} 
+        className="fixed bottom-5 right-0 z-[55] w-14 h-14 !bg-blue-600 rounded-l-full rounded-r-none shadow-[0_5px_20px_rgba(37,99,235,0.4)] flex items-center justify-center text-white hover:!bg-blue-500 transition-all duration-500 active:scale-95"
+      >
+        <MessageSquare className="w-6 h-6 mr-1" />
+      </button>
+
+      {/* ── FLOATING BOTTOM NAVIGATION BAR ── */}
+      <div className="fixed bottom-5 left-0 w-[calc(100%-72px)] pr-6 pl-4 bg-white border border-gray-200 border-l-0 z-50 rounded-r-full rounded-l-none shadow-[0_5px_30px_rgba(0,0,0,0.15)] transition-all duration-500">
+        <div className="flex items-center justify-between w-full h-[60px]">
+          {[
+            { id: 'analytics', icon: BarChart3, label: 'Analytics' },
+            { id: 'queue', icon: Shield, label: 'Queue', badge: pendingProperties.length },
+            { id: 'disputes', icon: AlertOctagon, label: 'Disputes', badge: pendingFraudCount },
+            { id: 'approved', icon: CheckCircle, label: 'Approved' },
+            { id: 'api', icon: Code2, label: 'Developer' },
+            { id: 'notifications', icon: Bell, label: 'Alerts', badge: unreadCount }
+          ].map(item => {
+             const Icon = item.icon;
+             const isActive = activeTab === item.id;
+             return (
+                <button
+                  key={item.id}
+                  onClick={() => handleTabChange(item.id as any)}
+                  className="flex flex-col items-center justify-center w-full h-full relative"
+                >
+                  <div className={`w-8 h-8 rounded-xl flex items-center justify-center transition-all duration-300 ${isActive ? 'bg-primary-50' : ''}`}>
+                    <Icon className={`w-5 h-5 transition-colors ${isActive ? 'text-primary-600' : 'text-gray-400'}`} />
+                    {item.badge !== undefined && item.badge > 0 && (
+                      <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[8px] font-bold rounded-full flex items-center justify-center">
+                        {item.badge}
+                      </span>
+                    )}
+                  </div>
+                  <span className={`text-[9px] font-semibold transition-colors mt-0.5 ${isActive ? 'text-primary-600' : 'text-gray-400'}`}>
+                    {item.label}
+                  </span>
+                  {isActive && (
+                    <motion.div layoutId="govtMobileNav" className="absolute bottom-0 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-primary-500 rounded-t-full" />
+                  )}
+                </button>
+             );
+          })}
+        </div>
+      </div>
+    </div>
   );
 };

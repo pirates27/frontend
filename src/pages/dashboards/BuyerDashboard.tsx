@@ -465,7 +465,7 @@ export const BuyerDashboard = () => {
               {visits.length > 0 ? (
                 <div className="flex flex-col gap-4">
                   {visits.map(v => (
-                    <div key={v.id} className="bg-white shadow-sm border border-gray-200 rounded-xl p-4 flex gap-4 items-center">
+                    <div key={v.id} className={`shadow-sm border rounded-xl p-4 flex gap-4 items-center ${v.status === 'CONFIRMED' ? 'bg-green-50/50 border-green-200' : 'bg-white border-gray-200'}`}>
                       <div className="w-12 h-12 rounded-xl bg-primary-50 border border-primary-100 flex flex-col items-center justify-center shrink-0">
                         <span className="text-[10px] text-primary-600 font-bold uppercase">{new Date(v.visitDate).toLocaleString('default', { month: 'short' })}</span>
                         <span className="text-sm text-gray-900 font-bold">{new Date(v.visitDate).getDate()}</span>
@@ -474,7 +474,14 @@ export const BuyerDashboard = () => {
                         <h3 className="text-sm font-bold text-gray-900 truncate">{v.property?.title || 'Unknown Property'}</h3>
                         <p className="text-xs text-gray-500 flex items-center gap-1 mt-1"><Clock className="w-3 h-3"/> {v.visitTime}</p>
                       </div>
-                      <StatusBadge status={v.status} size="sm" />
+                      <div className="flex items-center gap-2">
+                        <a href={`tel:${v.property?.provider?.phoneNumber || ''}`} className="w-8 h-8 rounded-full bg-primary-50 border border-primary-200 flex items-center justify-center hover:bg-primary-100 transition-colors shadow-sm">
+                          <Phone className="w-4 h-4 text-primary-600" />
+                        </a>
+                        <a href={`mailto:${v.property?.provider?.email || ''}`} className="w-8 h-8 rounded-full bg-primary-50 border border-primary-200 flex items-center justify-center hover:bg-primary-100 transition-colors shadow-sm">
+                          <Mail className="w-4 h-4 text-primary-600" />
+                        </a>
+                      </div>
                     </div>
                   ))}
                 </div>

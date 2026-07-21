@@ -16,12 +16,14 @@ import type {
   Property, PropertyVisit, Notification, PropertyImage, PropertyVideo, PropertyDocument,
   VerificationTimeline, AiVerification, GovernmentVerification, DocumentType
 } from '../../models/property.models';
+import { useNavigate } from 'react-router-dom';
 import {
   Home, Plus, Calendar, Bell, CheckCircle, X, Loader2, Shield, Settings, Sparkles,
-  Upload, Image, Video, FileText, Clock, Edit2, BarChart3, Map as MapIcon
+  Upload, Image, Video, FileText, Clock, Edit2, BarChart3, Map as MapIcon, Eye, ExternalLink, LogOut, MessageSquare
 } from 'lucide-react';
 
 export const ProviderDashboard = () => {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'listings' | 'add' | 'visits' | 'notifications'>('listings');
   const [detailSubTab, setDetailSubTab] = useState<'verify' | 'media' | 'docs' | 'timeline'>('verify');
   const [listingFilterTab, setListingFilterTab] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
@@ -55,6 +57,7 @@ export const ProviderDashboard = () => {
   const [isEditMode, setIsEditMode] = useState(false);
   const [editingPropertyId, setEditingPropertyId] = useState<string | null>(null);
   const [selectedAddPropertyDocFile, setSelectedAddPropertyDocFile] = useState<File | null>(null);
+  const [selectedThreeSixtyFile, setSelectedThreeSixtyFile] = useState<File | null>(null);
   const [successToast, setSuccessToast] = useState(false);
   const [submittedPropertyCode, setSubmittedPropertyCode] = useState<string | null>(null);
 
@@ -108,7 +111,7 @@ export const ProviderDashboard = () => {
 
   const openAddPropertyForm = () => {
     setIsEditMode(false); setEditingPropertyId(null);
-    setSelectedAddPropertyDocFile(null); setLastDrawnBoundary([]);
+    setSelectedAddPropertyDocFile(null); setSelectedThreeSixtyFile(null); setLastDrawnBoundary([]);
     setPropertyForm(initialFormState); setFormErrors({});
     setActiveTab('add');
   };
@@ -152,6 +155,11 @@ export const ProviderDashboard = () => {
     }
 
     try {
+      if (selectedThreeSixtyFile) {
+        const t60Upload = await cloudinaryService.uploadFile(selectedThreeSixtyFile);
+        payload.threeSixtyImageUrl = t60Upload.secure_url;
+      }
+
       if (isEditMode && editingPropertyId) {
         await propertyService.updateProperty(editingPropertyId, payload);
         finishSave();
@@ -178,7 +186,7 @@ export const ProviderDashboard = () => {
 
   const finishSave = (propertyCode?: string) => {
     setIsSaving(false); setLastDrawnBoundary([]); setIsEditMode(false);
-    setEditingPropertyId(null); setPropertyForm(initialFormState);
+    setEditingPropertyId(null); setPropertyForm(initialFormState); setSelectedThreeSixtyFile(null);
     setActiveTab('listings'); loadData();
     setSubmittedPropertyCode(propertyCode || null);
     setSuccessToast(true);
@@ -269,72 +277,92 @@ export const ProviderDashboard = () => {
   const navItems = providerNavItems(pendingVisitsCount, unreadCount);
 
   const fieldClasses = (name: string) =>
-    `input-dark ${formErrors[name] ? '!border-danger-500/60 !bg-danger-500/5' : ''}`;
+    `w-full bg-gray-50 border border-gray-200 text-gray-900 placeholder-gray-400 focus:outline-none focus:border-primary-500 rounded-xl px-4 py-2.5 text-sm transition-all ${formErrors[name] ? '!border-danger-500 !bg-danger-50' : ''}`;
 
   return (
-    <DashboardLayout
-      activeTab={activeTab}
-      onTabChange={(tab) => {
-        if (tab === 'add') openAddPropertyForm();
-        else setActiveTab(tab as any);
-      }}
-      navItems={navItems}
-      role="PROVIDER"
-      title="Provider Dashboard"
-      subtitle={`Hello, ${currentUser?.firstName || 'Provider'}`}
-      unreadCount={unreadCount}
-      mobileNavItems={navItems}
-    >
-      {/* SUCCESS TOAST */}
-      <AnimatePresence>
-        {successToast && (
-          <motion.div
-            initial={{ opacity: 0, x: 32 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: 32 }}
-            className="fixed top-5 right-5 z-[9999] glass-card max-w-sm !border-accent-500/30 !bg-accent-500/10"
-          >
-            <div className="flex items-start gap-4 p-4">
-              <div className="w-9 h-9 rounded-xl bg-accent-500 flex items-center justify-center shrink-0">
-                <CheckCircle className="w-5 h-5 text-white" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-white font-semibold text-sm">Property Submitted! 🎉</p>
-                <p className="text-dark-400 text-xs mt-0.5 leading-relaxed">
-                  Queued for <span className="text-accent-400 font-semibold">AI Trust Score</span> verification.
-                </p>
-                {submittedPropertyCode && <p className="text-dark-600 text-[10px] font-mono mt-1">Code: {submittedPropertyCode}</p>}
-              </div>
-              <button onClick={() => setSuccessToast(false)} className="text-dark-500 hover:text-white transition-colors">
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* ─── LISTINGS TAB ─── */}
-      <div className={`${activeTab === 'listings' ? 'block' : 'hidden'} space-y-5 mt-6`}>
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-            <div>
-              <h2 className="text-white font-bold text-lg">Your Property Catalog</h2>
-              <p className="text-dark-400 text-sm mt-0.5">Manage listings, view trust reports, upload verification documents</p>
-            </div>
-            <Button variant="primary" size="sm" icon={<Plus className="w-4 h-4" />} onClick={openAddPropertyForm}>
-              List New Property
-            </Button>
+    <div className="min-h-screen bg-gray-50 text-gray-900 font-sans flex flex-col pb-28 relative overflow-x-hidden">
+      {/* ── TOP HEADER APP BAR ── */}
+      <div className="sticky top-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-b border-gray-200 px-4 sm:px-6 h-16 flex items-center justify-between shadow-xs">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary-600 to-cyan-600 flex items-center justify-center text-white font-black text-sm shadow-sm">
+            LL
           </div>
+          <div>
+            <h1 className="text-gray-900 font-bold text-base leading-tight">Seller Portal</h1>
+            <p className="text-gray-500 text-[11px]">Welcome back, {currentUser?.firstName || 'Provider'}</p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setActiveTab('notifications')}
+            className="relative w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-gray-600 hover:bg-gray-200 transition-colors"
+          >
+            <Bell className="w-4 h-4" />
+            {unreadCount > 0 && (
+              <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-primary-600 rounded-full border-2 border-white" />
+            )}
+          </button>
+          <button
+            onClick={() => { authService.logout(); navigate('/auth/login'); }}
+            className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-gray-600 hover:bg-gray-200 transition-colors"
+          >
+            <LogOut className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+
+      <div className="px-4 sm:px-6 lg:px-8 py-6 space-y-6 max-w-7xl mx-auto w-full">
+        {/* SUCCESS TOAST */}
+        <AnimatePresence>
+          {successToast && (
+            <motion.div
+              initial={{ opacity: 0, x: 32 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 32 }}
+              className="fixed top-20 right-5 z-[9999] bg-white border border-emerald-200 shadow-xl rounded-2xl max-w-sm"
+            >
+              <div className="flex items-start gap-4 p-4">
+                <div className="w-9 h-9 rounded-xl bg-emerald-500 flex items-center justify-center shrink-0">
+                  <CheckCircle className="w-5 h-5 text-white" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-gray-900 font-semibold text-sm">Property Submitted! 🎉</p>
+                  <p className="text-gray-500 text-xs mt-0.5 leading-relaxed">
+                    Queued for <span className="text-emerald-600 font-semibold">AI Trust Score</span> verification.
+                  </p>
+                  {submittedPropertyCode && <p className="text-gray-400 text-[10px] font-mono mt-1">Code: {submittedPropertyCode}</p>}
+                </div>
+                <button onClick={() => setSuccessToast(false)} className="text-gray-400 hover:text-gray-700 transition-colors">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* ─── LISTINGS TAB ─── */}
+        <div className={`${activeTab === 'listings' ? 'block' : 'hidden'} space-y-5`}>
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+              <div>
+                <h2 className="text-gray-900 font-bold text-xl">Your Property Catalog</h2>
+                <p className="text-gray-500 text-sm mt-0.5">Manage listings, view trust reports, upload verification documents</p>
+              </div>
+              <Button variant="primary" size="sm" icon={<Plus className="w-4 h-4" />} onClick={openAddPropertyForm}>
+                List New Property
+              </Button>
+            </div>
 
           {/* Filter Tabs */}
           {myProperties.length > 0 && (
-            <div className="flex flex-wrap gap-2 p-1 bg-white/[0.03] rounded-xl border border-white/[0.06] w-fit">
+            <div className="flex flex-wrap gap-2 p-1 bg-gray-100/80 rounded-xl border border-gray-200 w-fit">
               {(['all', 'pending', 'approved', 'rejected'] as const).map(tab => {
                 const counts = { all: myProperties.length, pending: myProperties.filter(p => p.status.includes('PENDING')).length, approved: myProperties.filter(p => p.status === 'APPROVED').length, rejected: myProperties.filter(p => p.status === 'REJECTED').length };
                 return (
                   <button
                     key={tab}
                     onClick={() => setListingFilterTab(tab)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold capitalize transition-all ${listingFilterTab === tab ? 'bg-white/10 text-white' : 'text-dark-500 hover:text-dark-300'}`}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold capitalize transition-all ${listingFilterTab === tab ? 'bg-white text-primary-600 shadow-sm border border-gray-200' : 'text-gray-500 hover:text-gray-800'}`}
                   >
                     {tab} ({counts[tab]})
                   </button>
@@ -348,65 +376,79 @@ export const ProviderDashboard = () => {
             <div className={`w-full transition-all duration-500 ${selectedProperty ? 'lg:w-[55%]' : 'w-full'}`}>
               {filteredProperties().length > 0 ? (
                 <div className={`grid gap-4 ${selectedProperty ? 'grid-cols-1 xl:grid-cols-2' : 'grid-cols-1 md:grid-cols-2 xl:grid-cols-3'}`}>
-                  {filteredProperties().map(p => (
-                    <div
-                      key={p.id}
-                      onClick={() => selectProperty(p)}
-                      className={`glass-card overflow-hidden flex flex-col h-[320px] cursor-pointer transition-all duration-200 hover:-translate-y-0.5 !p-0
-                        ${selectedProperty?.id === p.id ? '!border-primary-500/40 shadow-[0_0_20px_rgba(37,99,235,0.15)]' : ''}`}
-                    >
-                      {/* Thumbnail */}
-                      <div className="relative h-[75%] bg-dark-800 shrink-0 overflow-hidden">
-                        {p.threeSixtyImageUrl ? (
-                          <>
-                            <iframe src={p.threeSixtyImageUrl} style={{ width: '117.64%', height: '117.64%', border: 'none', position: 'absolute', top: 0, left: 0 }} className="pointer-events-none" />
-                            <div className="absolute top-2 left-2 flex items-center gap-1 bg-dark-900/80 px-2 py-0.5 rounded-full text-white text-[8px] font-bold">
-                              <span className="w-1.5 h-1.5 bg-accent-400 rounded-full animate-ping" />
-                              360° LIVE
+                  {filteredProperties().map(p => {
+                    const isDirectImage = p.threeSixtyImageUrl && (
+                      p.threeSixtyImageUrl.includes('cloudinary.com') ||
+                      /\.(jpg|jpeg|png|webp)($|\?)/i.test(p.threeSixtyImageUrl)
+                    );
+                    return (
+                      <div
+                        key={p.id}
+                        onClick={() => selectProperty(p)}
+                        className={`group glass-card overflow-hidden flex flex-col h-[340px] cursor-pointer transition-all duration-300 hover:-translate-y-1 hover:shadow-xl !p-0 border border-white/[0.08] hover:border-primary-500/50
+                          ${selectedProperty?.id === p.id ? '!border-primary-500 shadow-[0_0_25px_rgba(37,99,235,0.25)] bg-primary-950/10' : ''}`}
+                      >
+                        {/* Thumbnail */}
+                        <div className="relative h-[65%] bg-dark-800 shrink-0 overflow-hidden">
+                          {isDirectImage ? (
+                            <img src={p.threeSixtyImageUrl} alt={p.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                          ) : p.threeSixtyImageUrl ? (
+                            <>
+                              <iframe src={p.threeSixtyImageUrl} style={{ width: '117.64%', height: '117.64%', border: 'none', position: 'absolute', top: 0, left: 0 }} className="pointer-events-none" />
+                              <div className="absolute top-2 left-2 flex items-center gap-1 bg-dark-900/80 px-2 py-0.5 rounded-full text-white text-[8px] font-bold backdrop-blur-md">
+                                <span className="w-1.5 h-1.5 bg-accent-400 rounded-full animate-ping" />
+                                360° LIVE
+                              </div>
+                            </>
+                          ) : (
+                            <div className="absolute inset-0 bg-gradient-to-br from-dark-800 to-dark-900 flex items-center justify-center group-hover:bg-dark-750 transition-colors">
+                              <MapIcon className="w-10 h-10 text-dark-600 group-hover:text-primary-400 transition-colors" />
                             </div>
-                          </>
-                        ) : (
-                          <div className="absolute inset-0 bg-gradient-to-br from-dark-800 to-dark-900 flex items-center justify-center">
-                            <MapIcon className="w-8 h-8 text-dark-600" />
+                          )}
+                          <div className="absolute top-2 right-2 z-10">
+                            <StatusBadge status={p.status} size="sm" />
                           </div>
-                        )}
-                        <div className="absolute top-2 right-2">
-                          <StatusBadge status={p.status} size="sm" />
                         </div>
-                      </div>
 
-                      <div className="p-4 flex-1 flex flex-col gap-2">
-                        <div>
-                          <h3 className="text-white font-semibold text-sm truncate">{p.title}</h3>
-                          <p className="text-dark-500 text-[10px] mt-0.5">📍 {p.village}, {p.district}</p>
-                        </div>
-                        <div className="grid grid-cols-3 gap-2 text-[10px]">
-                          <div className="bg-white/[0.04] rounded-lg p-2 text-center">
-                            <p className="text-dark-500">Area</p>
-                            <p className="text-white font-bold mt-0.5">{p.area}ac</p>
+                        <div className="p-4 flex-1 flex flex-col gap-2 bg-white">
+                          <div>
+                            <h3 className="text-gray-900 font-bold text-sm truncate group-hover:text-primary-600 transition-colors">{p.title}</h3>
+                            <p className="text-gray-500 text-[10px] mt-0.5 font-semibold">📍 {p.village}, {p.district}</p>
                           </div>
-                          <div className="bg-accent-500/[0.08] rounded-lg p-2 text-center">
-                            <p className="text-accent-500">Price</p>
-                            <p className="text-accent-400 font-bold mt-0.5 truncate">₹{p.price.toLocaleString('en-IN')}</p>
+                          <div className="grid grid-cols-3 gap-1.5 text-[10px]">
+                            <div className="bg-gray-50 border border-gray-200 rounded-lg p-1.5 text-center">
+                              <p className="text-gray-500 text-[9px] font-semibold">Area</p>
+                              <p className="text-gray-900 font-black mt-0.5">{p.area}ac</p>
+                            </div>
+                            <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-1.5 text-center">
+                              <p className="text-emerald-700 text-[9px] font-semibold">Price</p>
+                              <p className="text-emerald-800 font-black mt-0.5 truncate">₹{p.price.toLocaleString('en-IN')}</p>
+                            </div>
+                            <div className="bg-gray-50 border border-gray-200 rounded-lg p-1.5 text-center">
+                              <p className="text-gray-500 text-[9px] font-semibold">Survey</p>
+                              <p className="text-gray-900 font-black mt-0.5 truncate">{p.surveyNumber}</p>
+                            </div>
                           </div>
-                          <div className="bg-white/[0.04] rounded-lg p-2 text-center">
-                            <p className="text-dark-500">Survey</p>
-                            <p className="text-white font-bold mt-0.5 truncate">{p.surveyNumber}</p>
+                          <div className="flex items-center justify-between pt-2 border-t border-gray-100 mt-auto">
+                            <button
+                              onClick={e => { e.stopPropagation(); navigate(`/property/${p.id}`); }}
+                              className="flex items-center gap-1 text-[10px] text-emerald-700 hover:text-emerald-800 font-bold px-2.5 py-1 rounded-md bg-emerald-50 border border-emerald-200 hover:bg-emerald-100 transition-all"
+                            >
+                              <Eye className="w-3 h-3" />
+                              View Page
+                            </button>
+                            <button
+                              onClick={e => { e.stopPropagation(); editProperty(p); }}
+                              className="flex items-center gap-1 text-[10px] text-primary-700 hover:text-primary-800 font-bold px-2.5 py-1 rounded-md bg-primary-50 border border-primary-200 hover:bg-primary-100 transition-all"
+                            >
+                              <Edit2 className="w-3 h-3" />
+                              Edit Details
+                            </button>
                           </div>
-                        </div>
-                        <div className="flex items-center justify-between pt-2 border-t border-white/[0.05] mt-auto">
-                          <span className="text-dark-600 text-[9px]">{new Date(p.createdAt || Date.now()).toLocaleDateString()}</span>
-                          <button
-                            onClick={e => { e.stopPropagation(); editProperty(p); }}
-                            className="flex items-center gap-1 text-[10px] text-primary-400 hover:text-primary-300 font-semibold transition-colors"
-                          >
-                            <Edit2 className="w-3 h-3" />
-                            Edit
-                          </button>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               ) : myProperties.length === 0 ? (
                 <EmptyState
@@ -429,36 +471,36 @@ export const ProviderDashboard = () => {
               <motion.div
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
-                className="w-full lg:w-[45%] glass-card p-5 lg:sticky lg:top-4 shrink-0"
+                className="w-full lg:w-[45%] bg-white border border-gray-200 shadow-xl rounded-2xl p-5 lg:sticky lg:top-20 shrink-0 text-gray-900"
               >
-                <div className="flex justify-between items-start border-b border-white/[0.06] pb-4 mb-4">
+                <div className="flex justify-between items-start border-b border-gray-200 pb-4 mb-4">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary-600/20 to-cyan-500/20 border border-primary-500/20 flex items-center justify-center shrink-0">
-                      <Settings className="w-5 h-5 text-primary-400" />
+                    <div className="w-10 h-10 rounded-xl bg-primary-50 border border-primary-200 flex items-center justify-center shrink-0">
+                      <Settings className="w-5 h-5 text-primary-600" />
                     </div>
                     <div>
-                      <h3 className="text-white font-bold text-base tracking-tight">Detail Management</h3>
-                      <p className="text-dark-400 text-[11px] mt-0.5 truncate max-w-[200px] font-medium">{selectedProperty.title}</p>
+                      <h3 className="text-gray-900 font-black text-base tracking-tight">Detail Management</h3>
+                      <p className="text-gray-500 text-[11px] mt-0.5 truncate max-w-[200px] font-semibold">{selectedProperty.title}</p>
                     </div>
                   </div>
                   <div className="flex gap-2">
-                    <Button variant="glass" size="xs" icon={<Edit2 className="w-3.5 h-3.5" />} onClick={() => editProperty(selectedProperty)}>Edit</Button>
-                    <button onClick={() => setSelectedProperty(null)} className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/[0.05] text-dark-400 hover:text-white hover:bg-white/[0.1] transition-all">
+                    <Button variant="secondary" size="xs" icon={<Edit2 className="w-3.5 h-3.5" />} onClick={() => editProperty(selectedProperty)}>Edit</Button>
+                    <button onClick={() => setSelectedProperty(null)} className="w-8 h-8 flex items-center justify-center rounded-lg bg-gray-100 text-gray-500 hover:text-gray-900 hover:bg-gray-200 transition-all">
                       <X className="w-4 h-4" />
                     </button>
                   </div>
                 </div>
 
                 {/* Sub-tab nav */}
-                <div className="flex p-1 bg-dark-900/60 rounded-xl border border-white/[0.04] mb-5 gap-1">
+                <div className="flex p-1 bg-gray-100 rounded-xl border border-gray-200 mb-5 gap-1">
                   {(['verify', 'media', 'docs', 'timeline'] as const).map(tab => (
                     <button
                       key={tab}
                       onClick={() => setDetailSubTab(tab)}
-                      className={`flex-1 px-3 py-2 text-[11px] font-semibold capitalize rounded-lg transition-all duration-200 ${
+                      className={`flex-1 px-3 py-2 text-[11px] font-bold capitalize rounded-lg transition-all duration-200 ${
                         detailSubTab === tab 
-                          ? 'bg-gradient-to-b from-white/10 to-transparent text-white shadow-sm border border-white/10' 
-                          : 'text-dark-400 hover:text-white hover:bg-white/[0.02] border border-transparent'
+                          ? 'bg-white text-primary-600 shadow-sm border border-gray-200' 
+                          : 'text-gray-500 hover:text-gray-900 hover:bg-gray-200/50'
                       }`}
                     >
                       {tab === 'verify' ? 'AI Check' : tab}
@@ -469,19 +511,15 @@ export const ProviderDashboard = () => {
                 {/* AI Check sub-tab */}
                 {detailSubTab === 'verify' && (
                   <div className="space-y-4">
-                    <div className="relative p-5 bg-gradient-to-br from-dark-800 to-dark-900 rounded-2xl border border-white/[0.06] overflow-hidden group">
-                      {/* Decorative elements */}
-                      <div className="absolute top-0 right-0 w-32 h-32 bg-primary-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3 pointer-events-none group-hover:bg-primary-500/20 transition-all duration-700" />
-                      <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-[0.02] mix-blend-overlay pointer-events-none" />
-
+                    <div className="relative p-5 bg-gradient-to-br from-gray-50 to-primary-50/40 rounded-2xl border border-gray-200 overflow-hidden group shadow-xs">
                       <div className="relative z-10">
                         <div className="flex items-center gap-3 mb-4">
-                          <div className="w-10 h-10 rounded-xl bg-primary-500/10 border border-primary-500/20 flex items-center justify-center shrink-0">
-                            <Sparkles className="w-5 h-5 text-primary-400" />
+                          <div className="w-10 h-10 rounded-xl bg-primary-100 border border-primary-200 flex items-center justify-center shrink-0">
+                            <Sparkles className="w-5 h-5 text-primary-600" />
                           </div>
                           <div>
-                            <h4 className="text-white font-bold text-sm">AI Trust Audit</h4>
-                            <p className="text-dark-400 text-[11px] mt-0.5">Runs forgery & ownership checks</p>
+                            <h4 className="text-gray-900 font-black text-sm">AI Trust Audit</h4>
+                            <p className="text-gray-500 text-[11px] mt-0.5 font-semibold">Runs forgery & ownership checks</p>
                           </div>
                         </div>
 
@@ -492,7 +530,7 @@ export const ProviderDashboard = () => {
                             loading={aiLoading} 
                             fullWidth 
                             onClick={() => runAiVerify(selectedProperty.id)}
-                            className="mt-2 shadow-primary-900/50"
+                            className="mt-2 shadow-sm font-bold"
                           >
                             Run Trust Audit
                           </Button>
@@ -502,37 +540,37 @@ export const ProviderDashboard = () => {
                               <CircularProgress value={aiReport.aiTrustScore} size={100} strokeWidth={8} color={aiReport.aiTrustScore >= 70 ? 'accent' : 'danger'} sublabel="AI Score" />
                             </div>
                             <div className="grid grid-cols-4 gap-2 text-[10px]">
-                              <div className="bg-white/[0.03] border border-white/[0.05] rounded-xl p-2.5 text-center transition-all hover:bg-white/[0.05]">
-                                <p className="text-dark-500 font-medium mb-1">Forgery</p>
-                                <p className={`font-bold text-sm ${aiReport.forgeryScore > 30 ? 'text-danger-400' : 'text-white'}`}>{aiReport.forgeryScore}%</p>
+                              <div className="bg-white border border-gray-200 rounded-xl p-2.5 text-center shadow-xs">
+                                <p className="text-gray-500 font-semibold mb-1">Forgery</p>
+                                <p className={`font-black text-sm ${aiReport.forgeryScore > 30 ? 'text-red-600' : 'text-gray-900'}`}>{aiReport.forgeryScore}%</p>
                               </div>
-                              <div className="bg-white/[0.03] border border-white/[0.05] rounded-xl p-2.5 text-center transition-all hover:bg-white/[0.05]">
-                                <p className="text-dark-500 font-medium mb-1">Overlap</p>
-                                <p className={`font-bold text-sm ${aiReport.duplicateScore > 10 ? 'text-danger-400' : 'text-white'}`}>{aiReport.duplicateScore}%</p>
+                              <div className="bg-white border border-gray-200 rounded-xl p-2.5 text-center shadow-xs">
+                                <p className="text-gray-500 font-semibold mb-1">Overlap</p>
+                                <p className={`font-black text-sm ${aiReport.duplicateScore > 10 ? 'text-red-600' : 'text-gray-900'}`}>{aiReport.duplicateScore}%</p>
                               </div>
-                              <div className="bg-white/[0.03] border border-white/[0.05] rounded-xl p-2.5 text-center transition-all hover:bg-white/[0.05]">
-                                <p className="text-dark-500 font-medium mb-1">Risk</p>
-                                <p className={`font-bold text-sm ${aiReport.riskScore > 20 ? 'text-danger-400' : 'text-white'}`}>{aiReport.riskScore}%</p>
+                              <div className="bg-white border border-gray-200 rounded-xl p-2.5 text-center shadow-xs">
+                                <p className="text-gray-500 font-semibold mb-1">Risk</p>
+                                <p className={`font-black text-sm ${aiReport.riskScore > 20 ? 'text-red-600' : 'text-gray-900'}`}>{aiReport.riskScore}%</p>
                               </div>
-                              <div className="bg-white/[0.03] border border-white/[0.05] rounded-xl p-2.5 text-center transition-all hover:bg-white/[0.05]">
-                                <p className="text-dark-500 font-medium mb-1">Owner</p>
-                                <p className={`font-bold text-[10px] mt-1 tracking-wide ${aiReport.ownershipMatch ? 'text-accent-400' : 'text-danger-400'}`}>{aiReport.ownershipMatch ? 'MATCH' : 'MISMATCH'}</p>
+                              <div className="bg-white border border-gray-200 rounded-xl p-2.5 text-center shadow-xs">
+                                <p className="text-gray-500 font-semibold mb-1">Owner</p>
+                                <p className={`font-black text-[10px] mt-1 tracking-wide ${aiReport.ownershipMatch ? 'text-emerald-600' : 'text-red-600'}`}>{aiReport.ownershipMatch ? 'MATCH' : 'MISMATCH'}</p>
                               </div>
                             </div>
-                            <div className="bg-white/[0.03] p-3.5 rounded-xl border border-white/[0.06] mt-2">
+                            <div className="bg-white p-3.5 rounded-xl border border-gray-200 mt-2 shadow-xs">
                               <div className="flex justify-between items-center mb-1.5">
-                                <p className="text-white text-[11px] font-semibold flex items-center gap-1.5"><Shield className="w-3 h-3 text-primary-400" /> AI Summary</p>
-                                <span className="text-[10px] font-bold text-primary-400 bg-primary-500/10 px-2 py-0.5 rounded-full">{aiReport.confidence}% Confident</span>
+                                <p className="text-gray-900 text-[11px] font-bold flex items-center gap-1.5"><Shield className="w-3.5 h-3.5 text-primary-600" /> AI Summary</p>
+                                <span className="text-[10px] font-extrabold text-primary-700 bg-primary-50 px-2 py-0.5 rounded-full border border-primary-200">{aiReport.confidence}% Confident</span>
                               </div>
-                              <p className="text-dark-400 text-[11px] leading-relaxed mb-3">{aiReport.summary}</p>
+                              <p className="text-gray-600 text-[11px] leading-relaxed mb-3 font-medium">{aiReport.summary}</p>
                               {aiReport.reasoning && (
                                 <details className="group">
-                                  <summary className="text-[10px] text-primary-400 font-medium cursor-pointer hover:text-primary-300 transition-colors list-none flex items-center gap-1.5">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-primary-500/50 group-open:bg-primary-500"></span>
+                                  <summary className="text-[10px] text-primary-600 font-bold cursor-pointer hover:text-primary-700 transition-colors list-none flex items-center gap-1.5">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-primary-600 group-open:bg-primary-700"></span>
                                     View AI Reasoning Trace
                                   </summary>
-                                  <div className="mt-2 p-2.5 bg-black/40 rounded-lg border border-white/[0.05] max-h-40 overflow-y-auto">
-                                    <p className="text-dark-500 text-[10px] leading-relaxed whitespace-pre-wrap font-mono">
+                                  <div className="mt-2 p-2.5 bg-gray-50 rounded-lg border border-gray-200 max-h-40 overflow-y-auto">
+                                    <p className="text-gray-700 text-[10px] leading-relaxed whitespace-pre-wrap font-mono">
                                       {aiReport.reasoning}
                                     </p>
                                   </div>
@@ -544,7 +582,7 @@ export const ProviderDashboard = () => {
                                 loading={aiLoading} 
                                 fullWidth 
                                 onClick={() => runAiVerify(selectedProperty.id)}
-                                className="mt-4"
+                                className="mt-4 font-bold"
                               >
                                 Re-verify with AI
                               </Button>
@@ -654,20 +692,20 @@ export const ProviderDashboard = () => {
       <div className={`${activeTab === 'add' ? 'block' : 'hidden'} space-y-5`}>
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-white font-bold text-lg">{isEditMode ? 'Edit Property' : 'List New Property'}</h2>
-              <p className="text-dark-400 text-sm mt-0.5">
+              <h2 className="text-gray-900 font-black text-xl">{isEditMode ? 'Edit Property' : 'List New Property'}</h2>
+              <p className="text-gray-600 font-semibold text-sm mt-0.5">
                 {isEditMode ? 'Update your property details below' : 'Fill in the land details to trigger AI Trust Score verification'}
               </p>
             </div>
-            <Button variant="ghost" size="sm" onClick={() => setActiveTab('listings')}>Cancel</Button>
+            <Button variant="outline" size="sm" onClick={() => setActiveTab('listings')}>Cancel</Button>
           </div>
 
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
             {/* Form */}
-            <GlassCard>
+            <div className="bg-white border border-gray-200 shadow-xl rounded-2xl p-6 text-gray-900">
               <form onSubmit={onAddProperty} className="space-y-4">
                 <div>
-                  <label className="block text-dark-300 text-xs font-semibold mb-1.5 uppercase tracking-wider">Property Title *</label>
+                  <label className="block text-gray-800 text-xs font-bold mb-1.5 uppercase tracking-wider">Property Title *</label>
                   <input
                     type="text" value={propertyForm.title}
                     onChange={e => setPropertyForm({ ...propertyForm, title: e.target.value })}
@@ -677,7 +715,7 @@ export const ProviderDashboard = () => {
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-dark-300 text-xs font-semibold mb-1.5 uppercase tracking-wider">Category *</label>
+                    <label className="block text-gray-800 text-xs font-bold mb-1.5 uppercase tracking-wider">Category *</label>
                     <select value={propertyForm.category} onChange={e => setPropertyForm({ ...propertyForm, category: e.target.value })} className="select-dark">
                       <option value="AGRICULTURAL">Agricultural</option>
                       <option value="RESIDENTIAL">Residential</option>
@@ -686,7 +724,7 @@ export const ProviderDashboard = () => {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-dark-300 text-xs font-semibold mb-1.5 uppercase tracking-wider">Survey Number *</label>
+                    <label className="block text-gray-800 text-xs font-bold mb-1.5 uppercase tracking-wider">Survey Number *</label>
                     <input type="text" value={propertyForm.surveyNumber}
                       onChange={e => setPropertyForm({ ...propertyForm, surveyNumber: e.target.value })}
                       className={fieldClasses('surveyNumber')} placeholder="e.g. 123/4A" />
@@ -695,13 +733,13 @@ export const ProviderDashboard = () => {
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-dark-300 text-xs font-semibold mb-1.5 uppercase tracking-wider">Area (acres) *</label>
+                    <label className="block text-gray-800 text-xs font-bold mb-1.5 uppercase tracking-wider">Area (acres) *</label>
                     <input type="number" value={propertyForm.area} min="0" step="0.01"
                       onChange={e => setPropertyForm({ ...propertyForm, area: e.target.value })}
                       className={fieldClasses('area')} placeholder="2.5" />
                   </div>
                   <div>
-                    <label className="block text-dark-300 text-xs font-semibold mb-1.5 uppercase tracking-wider">Price (₹) *</label>
+                    <label className="block text-gray-800 text-xs font-bold mb-1.5 uppercase tracking-wider">Price (₹) *</label>
                     <input type="number" value={propertyForm.price} min="0"
                       onChange={e => setPropertyForm({ ...propertyForm, price: e.target.value })}
                       className={fieldClasses('price')} placeholder="5000000" />
@@ -710,13 +748,13 @@ export const ProviderDashboard = () => {
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-dark-300 text-xs font-semibold mb-1.5 uppercase tracking-wider">State</label>
+                    <label className="block text-gray-800 text-xs font-bold mb-1.5 uppercase tracking-wider">State</label>
                     <input type="text" value={propertyForm.state}
                       onChange={e => setPropertyForm({ ...propertyForm, state: e.target.value })}
                       className="input-dark" placeholder="Andhra Pradesh" />
                   </div>
                   <div>
-                    <label className="block text-dark-300 text-xs font-semibold mb-1.5 uppercase tracking-wider">District</label>
+                    <label className="block text-gray-800 text-xs font-bold mb-1.5 uppercase tracking-wider">District</label>
                     <input type="text" value={propertyForm.district}
                       onChange={e => setPropertyForm({ ...propertyForm, district: e.target.value })}
                       className="input-dark" placeholder="Guntur" />
@@ -725,13 +763,13 @@ export const ProviderDashboard = () => {
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-dark-300 text-xs font-semibold mb-1.5 uppercase tracking-wider">Village</label>
+                    <label className="block text-gray-800 text-xs font-bold mb-1.5 uppercase tracking-wider">Village</label>
                     <input type="text" value={propertyForm.village}
                       onChange={e => setPropertyForm({ ...propertyForm, village: e.target.value })}
                       className="input-dark" placeholder="Gorantla" />
                   </div>
                   <div>
-                    <label className="block text-dark-300 text-xs font-semibold mb-1.5 uppercase tracking-wider">Pincode</label>
+                    <label className="block text-gray-800 text-xs font-bold mb-1.5 uppercase tracking-wider">Pincode</label>
                     <input type="text" value={propertyForm.pincode}
                       onChange={e => setPropertyForm({ ...propertyForm, pincode: e.target.value })}
                       className="input-dark" placeholder="522034" />
@@ -739,21 +777,38 @@ export const ProviderDashboard = () => {
                 </div>
 
                 <div>
-                  <label className="block text-dark-300 text-xs font-semibold mb-1.5 uppercase tracking-wider">Street Address</label>
+                  <label className="block text-gray-800 text-xs font-bold mb-1.5 uppercase tracking-wider">Street Address</label>
                   <input type="text" value={propertyForm.address}
                     onChange={e => setPropertyForm({ ...propertyForm, address: e.target.value })}
                     className="input-dark" placeholder="Full address..." />
                 </div>
 
-                <div>
-                  <label className="block text-dark-300 text-xs font-semibold mb-1.5 uppercase tracking-wider">360° Street View URL</label>
-                  <input type="url" value={propertyForm.threeSixtyImageUrl}
-                    onChange={e => setPropertyForm({ ...propertyForm, threeSixtyImageUrl: e.target.value })}
-                    className="input-dark" placeholder="https://www.google.com/maps/embed/..." />
+                <div className="space-y-3">
+                  <label className="block text-gray-800 text-xs font-bold uppercase tracking-wider">360° Panoramic View</label>
+                  <div className="p-4 border-2 border-dashed border-gray-300 rounded-xl bg-gray-50 flex flex-col gap-3">
+                    <div>
+                      <span className="text-sm font-bold text-gray-800 block mb-1">Option 1: Upload High-Res 360° Image (Recommended)</span>
+                      <input type="file" accept="image/jpeg, image/png"
+                        onChange={e => setSelectedThreeSixtyFile(e.target.files?.[0] || null)}
+                        className="text-sm text-gray-600 font-semibold file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-bold file:bg-primary-50 file:text-primary-700 hover:file:bg-primary-100 cursor-pointer" />
+                      {selectedThreeSixtyFile && <p className="text-xs text-emerald-700 font-bold mt-1 flex items-center gap-1"><CheckCircle className="w-3 h-3"/> Selected: {selectedThreeSixtyFile.name}</p>}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="h-px bg-gray-300 flex-1"></div>
+                      <span className="text-xs text-gray-500 font-bold">OR</span>
+                      <div className="h-px bg-gray-300 flex-1"></div>
+                    </div>
+                    <div>
+                      <span className="text-sm font-bold text-gray-800 block mb-1">Option 2: Provide Embed URL</span>
+                      <input type="url" value={propertyForm.threeSixtyImageUrl} disabled={!!selectedThreeSixtyFile}
+                        onChange={e => setPropertyForm({ ...propertyForm, threeSixtyImageUrl: e.target.value })}
+                        className={`input-dark ${selectedThreeSixtyFile ? 'opacity-50 bg-gray-100 cursor-not-allowed' : ''}`} placeholder="https://kuula.co/share/..." />
+                    </div>
+                  </div>
                 </div>
 
                 <div>
-                  <label className="block text-dark-300 text-xs font-semibold mb-1.5 uppercase tracking-wider">Description</label>
+                  <label className="block text-gray-800 text-xs font-bold mb-1.5 uppercase tracking-wider">Description</label>
                   <textarea value={propertyForm.description}
                     onChange={e => setPropertyForm({ ...propertyForm, description: e.target.value })}
                     rows={3}
@@ -762,13 +817,13 @@ export const ProviderDashboard = () => {
 
                 {!isEditMode && (
                   <div>
-                    <label className="block text-dark-300 text-xs font-semibold mb-1.5 uppercase tracking-wider">
+                    <label className="block text-gray-800 text-xs font-bold mb-1.5 uppercase tracking-wider">
                       Land Document (Patta / Sale Deed) *
                     </label>
-                    <label className="relative block border border-dashed border-white/20 rounded-xl p-4 text-center cursor-pointer hover:border-primary-500/40 transition-all">
+                    <label className="relative block border-2 border-dashed border-gray-300 rounded-xl p-4 text-center cursor-pointer hover:border-primary-500 hover:bg-gray-50 transition-all">
                       <input type="file" onChange={e => setSelectedAddPropertyDocFile(e.target.files?.[0] || null)} className="absolute inset-0 opacity-0 cursor-pointer" accept=".pdf,image/*" />
-                      <Upload className="w-6 h-6 text-dark-500 mx-auto mb-1" />
-                      <p className="text-dark-500 text-xs">
+                      <Upload className="w-6 h-6 text-gray-400 mx-auto mb-1" />
+                      <p className="text-gray-700 font-bold text-xs">
                         {selectedAddPropertyDocFile ? selectedAddPropertyDocFile.name : 'Click to choose document'}
                       </p>
                     </label>
@@ -781,11 +836,11 @@ export const ProviderDashboard = () => {
                   </Button>
                 </div>
               </form>
-            </GlassCard>
+            </div>
 
             {/* Map */}
             <div className="flex flex-col gap-4">
-              <GlassCard padding="p-0" className="overflow-hidden h-72 xl:h-96">
+              <div className="overflow-hidden h-[660px] xl:h-[880px] bg-white border border-gray-200 shadow-xl rounded-2xl">
                 <Map
                   mode="picker"
                   pickerLat={propertyForm.latitude}
@@ -793,23 +848,23 @@ export const ProviderDashboard = () => {
                   onLocationSelected={onLocationSelected}
                   initialBoundary={lastDrawnBoundary}
                 />
-              </GlassCard>
-              <GlassCard>
-                <h4 className="text-white text-xs font-semibold mb-2">Location Preview</h4>
+              </div>
+              <div className="bg-white border border-gray-200 rounded-2xl p-5 shadow-sm">
+                <h4 className="text-gray-900 text-xs font-black uppercase tracking-wider mb-3">Location Preview</h4>
                 <div className="grid grid-cols-2 gap-2 text-xs">
-                  <div className="bg-white/[0.04] rounded-lg p-2">
-                    <p className="text-dark-500">Latitude</p>
-                    <p className="text-white font-mono">{propertyForm.latitude}</p>
+                  <div className="bg-gray-50 border border-gray-200 rounded-xl p-3">
+                    <p className="text-gray-500 font-bold text-[10px] uppercase">Latitude</p>
+                    <p className="text-gray-900 font-extrabold font-mono text-sm mt-0.5">{propertyForm.latitude}</p>
                   </div>
-                  <div className="bg-white/[0.04] rounded-lg p-2">
-                    <p className="text-dark-500">Longitude</p>
-                    <p className="text-white font-mono">{propertyForm.longitude}</p>
+                  <div className="bg-gray-50 border border-gray-200 rounded-xl p-3">
+                    <p className="text-gray-500 font-bold text-[10px] uppercase">Longitude</p>
+                    <p className="text-gray-900 font-extrabold font-mono text-sm mt-0.5">{propertyForm.longitude}</p>
                   </div>
                 </div>
                 {lastDrawnBoundary.length > 0 && (
-                  <p className="text-accent-400 text-[10px] mt-2">✓ Custom boundary drawn ({lastDrawnBoundary.length} points)</p>
+                  <p className="text-emerald-700 font-bold text-[10px] mt-2.5">✓ Custom boundary drawn ({lastDrawnBoundary.length} points)</p>
                 )}
-              </GlassCard>
+              </div>
             </div>
           </div>
         </div>
@@ -817,23 +872,23 @@ export const ProviderDashboard = () => {
       {/* ─── VISITS TAB ─── */}
       <div className={`${activeTab === 'visits' ? 'block' : 'hidden'} space-y-5`}>
           <div>
-            <h2 className="text-white font-bold text-lg">Visits & Tours</h2>
-            <p className="text-dark-400 text-sm mt-0.5">Manage visit requests from potential buyers</p>
+            <h2 className="text-gray-900 font-bold text-xl">Visits & Tours</h2>
+            <p className="text-gray-500 text-sm mt-0.5">Manage visit requests from potential buyers</p>
           </div>
           {myVisits.length > 0 ? (
             <div className="space-y-3">
               {myVisits.map(v => (
-                <GlassCard key={v.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div key={v.id} className="bg-white border border-gray-200 rounded-2xl p-4 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                   <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 rounded-xl bg-primary-500/15 flex items-center justify-center">
-                      <Calendar className="w-5 h-5 text-primary-400" />
+                    <div className="w-10 h-10 rounded-xl bg-primary-50 flex items-center justify-center">
+                      <Calendar className="w-5 h-5 text-primary-600" />
                     </div>
                     <div>
                       <div className="flex items-center gap-2">
-                        <p className="text-white font-semibold text-sm">{v.visitDate} at {v.visitTime}</p>
+                        <p className="text-gray-900 font-semibold text-sm">{v.visitDate} at {v.visitTime}</p>
                         <Chip label={v.status} color={v.status === 'CONFIRMED' ? 'accent' : v.status === 'SCHEDULED' ? 'warning' : 'danger'} size="xs" dot />
                       </div>
-                      <p className="text-dark-500 text-[11px] font-mono">Property: {v.property?.title?.slice(0, 30) || v.property?.id?.slice(0, 12)}...</p>
+                      <p className="text-gray-500 text-[11px] font-mono">Property: {v.property?.title?.slice(0, 30) || v.property?.id?.slice(0, 12)}...</p>
                     </div>
                   </div>
                   {v.status === 'SCHEDULED' && (
@@ -842,7 +897,7 @@ export const ProviderDashboard = () => {
                       <Button variant="danger" size="xs" icon={<X className="w-3.5 h-3.5" />} onClick={() => changeVisitStatus(v.id, 'REJECTED')}>Reject</Button>
                     </div>
                   )}
-                </GlassCard>
+                </div>
               ))}
             </div>
           ) : (
@@ -854,33 +909,79 @@ export const ProviderDashboard = () => {
       <div className={`${activeTab === 'notifications' ? 'block' : 'hidden'} space-y-5`}>
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-white font-bold text-lg">Notifications</h2>
-              <p className="text-dark-400 text-sm mt-0.5">Updates about your properties and visits</p>
+              <h2 className="text-gray-900 font-bold text-xl">Notifications</h2>
+              <p className="text-gray-500 text-sm mt-0.5">Updates about your properties and visits</p>
             </div>
             {unreadCount > 0 && <Chip label={`${unreadCount} unread`} color="danger" dot />}
           </div>
           {notifications.length > 0 ? (
             <div className="space-y-3">
               {notifications.map(n => (
-                <GlassCard key={n.id} className={`flex items-start justify-between gap-4 ${!n.isRead ? '!border-primary-500/20 !bg-primary-500/[0.04]' : ''}`}>
+                <div key={n.id} className={`bg-white border border-gray-200 rounded-2xl p-4 shadow-sm flex items-start justify-between gap-4 ${!n.isRead ? 'bg-primary-50/40 border-primary-200' : ''}`}>
                   <div className="flex-1 min-w-0">
-                    <h3 className="text-white font-semibold text-sm">{n.title}</h3>
-                    <p className="text-dark-400 text-xs mt-0.5 leading-relaxed">{n.message}</p>
-                    <p className="text-dark-600 text-[10px] mt-1.5 flex items-center gap-1">
+                    <h3 className="text-gray-900 font-semibold text-sm">{n.title}</h3>
+                    <p className="text-gray-600 text-xs mt-0.5 leading-relaxed">{n.message}</p>
+                    <p className="text-gray-400 text-[10px] mt-1.5 flex items-center gap-1">
                       <Clock className="w-3 h-3" />
                       {new Date(n.createdTime).toLocaleString()}
                     </p>
                   </div>
                   {!n.isRead
                     ? <Button variant="secondary" size="xs" onClick={() => markNotificationRead(n.id)}>Mark Read</Button>
-                    : <CheckCircle className="w-4 h-4 text-dark-600 shrink-0" />}
-                </GlassCard>
+                    : <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />}
+                </div>
               ))}
             </div>
           ) : (
             <EmptyState icon={<Bell className="w-8 h-8" />} title="No notifications" description="You're all caught up!" />
           )}
         </div>
-    </DashboardLayout>
+      </div>
+
+      {/* ── FLOATING CHAT / AI BUTTON ── */}
+      <button 
+        onClick={() => navigate('/buyer-dashboard')} 
+        className="fixed bottom-5 right-0 z-[55] w-14 h-14 !bg-blue-600 rounded-l-full rounded-r-none shadow-[0_5px_20px_rgba(37,99,235,0.4)] flex items-center justify-center text-white hover:!bg-blue-500 transition-all duration-500 active:scale-95"
+      >
+        <MessageSquare className="w-6 h-6 mr-1" />
+      </button>
+
+      {/* ── FLOATING BOTTOM NAVIGATION BAR ── */}
+      <div className="fixed bottom-5 left-0 w-[calc(100%-72px)] pr-6 pl-4 bg-white border border-gray-200 border-l-0 z-50 rounded-r-full rounded-l-none shadow-[0_5px_30px_rgba(0,0,0,0.15)] transition-all duration-500">
+        <div className="flex items-center justify-between w-full h-[60px]">
+          {[
+            { id: 'listings', icon: Home, label: 'Listings' },
+            { id: 'add', icon: Plus, label: 'Add' },
+            { id: 'visits', icon: Calendar, label: 'Visits', badge: pendingVisitsCount },
+            { id: 'notifications', icon: Bell, label: 'Alerts', badge: unreadCount }
+          ].map(item => {
+             const Icon = item.icon;
+             const isActive = activeTab === item.id;
+             return (
+                <button
+                  key={item.id}
+                  onClick={() => item.id === 'add' ? openAddPropertyForm() : setActiveTab(item.id as any)}
+                  className="flex flex-col items-center justify-center w-full h-full relative"
+                >
+                  <div className={`w-8 h-8 rounded-xl flex items-center justify-center transition-all duration-300 ${isActive ? 'bg-primary-50' : ''}`}>
+                    <Icon className={`w-5 h-5 transition-colors ${isActive ? 'text-primary-600' : 'text-gray-400'}`} />
+                    {item.badge !== undefined && item.badge > 0 && (
+                      <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[8px] font-bold rounded-full flex items-center justify-center">
+                        {item.badge}
+                      </span>
+                    )}
+                  </div>
+                  <span className={`text-[9px] font-semibold transition-colors mt-0.5 ${isActive ? 'text-primary-600' : 'text-gray-400'}`}>
+                    {item.label}
+                  </span>
+                  {isActive && (
+                    <motion.div layoutId="providerMobileNav" className="absolute bottom-0 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-primary-500 rounded-t-full" />
+                  )}
+                </button>
+             );
+          })}
+        </div>
+      </div>
+    </div>
   );
 };

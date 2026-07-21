@@ -252,6 +252,13 @@ export const Map: React.FC<MapProps> = ({
     const map = mapboxService.initializeMap(mapContainer.current, center, zoom);
     mapRef.current = map;
 
+    const resizeObserver = new ResizeObserver(() => {
+      if (mapRef.current) {
+        mapRef.current.resize();
+      }
+    });
+    resizeObserver.observe(mapContainer.current);
+
     const geolocate = new mapboxgl.GeolocateControl({
       positionOptions: { enableHighAccuracy: true },
       trackUserLocation: true,
@@ -426,6 +433,7 @@ export const Map: React.FC<MapProps> = ({
     });
 
     return () => {
+      resizeObserver.disconnect();
       if (pickerMarkerRef.current) pickerMarkerRef.current.remove();
       boundaryMarkersRef.current.forEach(m => m.remove());
       propertyMarkersRef.current.forEach(m => m.remove());
@@ -510,14 +518,14 @@ export const Map: React.FC<MapProps> = ({
       )}
 
       {mode === 'picker' && !loading && (
-        <div className="absolute top-4 left-4 z-40 glass-card !bg-dark-950/85 backdrop-blur-md border-white/10 p-3 flex flex-col gap-2 max-w-[200px] shadow-2xl">
-          <span className="text-[10px] font-bold text-white uppercase tracking-wider">Boundary Drawing Tool</span>
-          <div className="flex bg-white/[0.04] p-0.5 rounded-lg border border-white/[0.06]">
+        <div className="absolute top-4 left-4 z-40 glass-card p-3 flex flex-col gap-2 max-w-[200px] shadow-2xl border border-gray-200">
+          <span className="text-[10px] font-bold text-gray-900 uppercase tracking-wider">Boundary Drawing Tool</span>
+          <div className="flex bg-gray-100/50 p-0.5 rounded-lg border border-gray-200">
             <button
               type="button"
               onClick={() => setDrawMode('pin')}
               className={`flex-1 py-1 text-[9px] font-bold rounded-md transition-all text-center flex items-center justify-center gap-1
-                ${drawMode === 'pin' ? 'bg-white/10 text-white shadow-xs' : 'text-dark-500 hover:text-dark-300'}`}
+                ${drawMode === 'pin' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
             >
               <MapPin className="w-2.5 h-2.5" /> Pin Point
             </button>
@@ -525,15 +533,15 @@ export const Map: React.FC<MapProps> = ({
               type="button"
               onClick={() => setDrawMode('draw')}
               className={`flex-1 py-1 text-[9px] font-bold rounded-md transition-all text-center flex items-center justify-center gap-1
-                ${drawMode === 'draw' ? 'bg-white/10 text-white shadow-xs' : 'text-dark-500 hover:text-dark-300'}`}
+                ${drawMode === 'draw' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
             >
               Draw Area
             </button>
           </div>
 
           {drawMode === 'draw' && (
-            <div className="space-y-2 pt-1 border-t border-white/[0.06] text-left">
-              <p className="text-[9px] text-dark-400 leading-tight">
+            <div className="space-y-2 pt-1 border-t border-gray-200 text-left">
+              <p className="text-[9px] text-gray-600 leading-tight">
                 Click map to add boundary points. Drag points to adjust.
               </p>
               {pointCount > 0 && (

@@ -1,5 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { AlertCircle, EyeOff, Maximize } from 'lucide-react';
+import { Viewer } from '@photo-sphere-viewer/core';
+import '@photo-sphere-viewer/core/index.css';
 
 interface PanoramaViewerProps {
   url?: string;
@@ -9,6 +11,10 @@ export const PanoramaViewer: React.FC<PanoramaViewerProps> = React.memo(({ url }
   const [safeUrl, setSafeUrl] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [extractedUrl, setExtractedUrl] = useState<string>('');
+  const [isNativeImage, setIsNativeImage] = useState<boolean>(false);
+  
+  const viewerRef = useRef<HTMLDivElement>(null);
+  const viewerInstance = useRef<Viewer | null>(null);
 
   useEffect(() => {
     let currentUrl = url || '';
@@ -19,23 +25,32 @@ export const PanoramaViewer: React.FC<PanoramaViewerProps> = React.memo(({ url }
       }
     }
     setExtractedUrl(currentUrl);
-
     setErrorMsg(null);
     setSafeUrl(null);
+    setIsNativeImage(false);
 
     if (!currentUrl) return;
 
     try {
       const parsedUrl = new URL(currentUrl);
       const hostname = parsedUrl.hostname.toLowerCase();
+      const pathname = parsedUrl.pathname.toLowerCase();
 
+      // Native Image Check (Cloudinary or direct image extensions)
+      if (hostname.includes('cloudinary.com') || pathname.endsWith('.jpg') || pathname.endsWith('.jpeg') || pathname.endsWith('.png') || pathname.endsWith('.webp')) {
+        setIsNativeImage(true);
+        setSafeUrl(currentUrl);
+        return;
+      }
+
+      // Existing Iframe Logic
       const isMomento = hostname.includes('momento360.com');
       const isKuula = hostname.includes('kuula.co');
       const is360PhotoCam = hostname.includes('360photocam.com');
       const isGoogleMaps = hostname.includes('google.com') || hostname.includes('google.co.in');
 
       if (!isMomento && !isKuula && !is360PhotoCam && !isGoogleMaps) {
-        setErrorMsg('This 360° provider is not officially supported. We support Google Maps, Momento360, Kuula, and 360PhotoCam.');
+        setErrorMsg('This 360° provider is not officially supported. We support direct image uploads, Google Maps, Momento360, Kuula, and 360PhotoCam.');
         return;
       }
 
@@ -70,6 +85,30 @@ export const PanoramaViewer: React.FC<PanoramaViewerProps> = React.memo(({ url }
     }
   }, [url]);
 
+  useEffect(() => {
+    if (isNativeImage && safeUrl && viewerRef.current) {
+      if (viewerInstance.current) {
+        viewerInstance.current.destroy();
+      }
+
+      viewerInstance.current = new Viewer({
+        container: viewerRef.current,
+        panorama: safeUrl,
+        navbar: ['autorotate', 'zoom', 'fullscreen'],
+        autorotateDelay: 1000,
+        autorotateSpeed: '1rpm',
+        defaultZoomLvl: 50
+      });
+    }
+
+    return () => {
+      if (viewerInstance.current) {
+        viewerInstance.current.destroy();
+        viewerInstance.current = null;
+      }
+    };
+  }, [isNativeImage, safeUrl]);
+
   return (
     <div className="relative w-full h-full bg-slate-950 overflow-hidden shadow-lg border border-slate-800 flex flex-col">
       {errorMsg ? (
@@ -84,8 +123,9 @@ export const PanoramaViewer: React.FC<PanoramaViewerProps> = React.memo(({ url }
           )}
         </div>
       ) : safeUrl ? (
-        <>
-          {/* Iframe perfectly filling the container */}
+        isNativeImage ? (
+          <div ref={viewerRef} className="absolute inset-0 w-full h-full z-10"></div>
+        ) : (
           <div className="absolute inset-0 w-full h-full z-10 overflow-hidden">
             <iframe
               src={safeUrl}
@@ -94,8 +134,7 @@ export const PanoramaViewer: React.FC<PanoramaViewerProps> = React.memo(({ url }
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture">
             </iframe>
           </div>
-
-        </>
+        )
       ) : (
         <div className="flex-1 flex flex-col items-center justify-center p-8 text-center text-slate-400">
           <EyeOff className="w-16 h-16 text-slate-600 mb-4" />
