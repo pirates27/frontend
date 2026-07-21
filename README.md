@@ -223,4 +223,22 @@ flowchart TD
 ```
 
 ---
+
+## 📊 AWS Infrastructure & Usage Cost Projections
+
+Estimated monthly AWS cloud hosting and maintenance costs scaled across active user tiers:
+
+| User Scale | Frontend (S3 + CloudFront) | Backend API (ECS Fargate + ALB) | Database (MySQL / RDS) | Networking & Egress (NAT Gateway) | Total Estimated Monthly Cost |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **100 Users** | **$0 - $2** *(CloudFront Free Tier)* | **$26 - $30** | **$10 - $15** *(Hostinger / Small)* | **$32 - $35** | **~$68 - $85 / mo** (~₹5.5k - ₹7k) |
+| **1,000 Users** | **$2 - $5** | **$45 - $55** | **$25 - $40** *(RDS db.t4g.small)* | **$35 - $40** | **~$110 - $140 / mo** (~₹9k - ₹11.5k) |
+| **10,000 Users** | **$100 - $150** | **$165 - $230** | **$150 - $250** *(RDS Multi-AZ)* | **$60 - $90** | **~$600 - $800 / mo** (~₹50k - ₹66k) |
+| **100,000 (1 Lakh)**| **$1,200 - $1,800** | **$950 - $1,450** | **$800 - $1,500** *(Aurora Serverless)* | **$200 - $350** | **~$3,500 - $5,000 / mo** (~₹2.9L - ₹4.1L) |
+
+### 🛠️ Key Cost Drivers & Optimization Strategies
+- **CloudFront Free Tier**: Provides 1 TB data transfer & 10M requests free per month.
+- **S3 Gateway Endpoints**: Eliminates NAT Gateway data transfer charges for internal S3 asset fetches.
+- **ECS & RDS Savings Plans**: Committing 1-year reserved instances yields 40%–60% cost reductions.
+
+---
 *Built as part of a modernization migration from Angular to React + Vite. The migration is fully complete, porting all dashboards, UI elements, and API integrations with exact fidelity.*
