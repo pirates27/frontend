@@ -133,14 +133,14 @@ export const CircularProgress: React.FC<CircularProgressProps> = ({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.8 }}
-            className="text-2xl font-bold text-white"
+            className="text-2xl font-bold text-gray-900"
           >
             {clampedValue}
           </motion.span>
-          {sublabel && <span className="text-[10px] text-dark-400 font-medium">{sublabel}</span>}
+          {sublabel && <span className="text-[10px] text-gray-700 font-medium">{sublabel}</span>}
         </div>
       </div>
-      {label && <p className="text-dark-400 text-xs font-medium mt-2 text-center">{label}</p>}
+      {label && <p className="text-gray-700 text-xs font-medium mt-2 text-center">{label}</p>}
     </div>
   );
 };

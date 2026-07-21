@@ -51,11 +51,17 @@ export const PanoramaViewer: React.FC<PanoramaViewerProps> = React.memo(({ url }
         return;
       }
 
-      // Add smooth autorotation if possible
-      if (!embedUrl.includes('?')) {
-        embedUrl += '?autoplay=1&autorotate=1&autorotation=1';
+      // Handle Kuula specific UI hiding
+      if (isKuula) {
+        const baseUrl = currentUrl.split('?')[0];
+        embedUrl = `${baseUrl}?fs=0&vr=0&zoom=0&sd=1&info=0&logo=-1&thumbs=0&autoplay=1&autorotate=1&autorotation=1`;
       } else {
-        embedUrl += '&autoplay=1&autorotate=1&autorotation=1';
+        // Add smooth autorotation if possible for others
+        if (!embedUrl.includes('?')) {
+          embedUrl += '?autoplay=1&autorotate=1&autorotation=1';
+        } else {
+          embedUrl += '&autoplay=1&autorotate=1&autorotation=1';
+        }
       }
 
       setSafeUrl(embedUrl);
@@ -83,7 +89,7 @@ export const PanoramaViewer: React.FC<PanoramaViewerProps> = React.memo(({ url }
           <div className="absolute inset-0 w-full h-full z-10 overflow-hidden">
             <iframe
               src={safeUrl}
-              style={{ width: '100%', height: '100%', border: 'none', display: 'block' }}
+              style={{ width: 'calc(100% + 55px)', height: 'calc(100% + 45px)', border: 'none', display: 'block', position: 'absolute', top: 0, left: 0 }}
               allowFullScreen
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture">
             </iframe>

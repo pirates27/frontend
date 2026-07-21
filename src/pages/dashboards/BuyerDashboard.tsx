@@ -16,23 +16,38 @@ import {
   Search, Calendar, MessageSquare, Bell, Map as MapIcon,
   Heart, ExternalLink, Clock, CheckCircle, Send, Plus,
   Filter, User, Settings, LogOut, ChevronRight, Home, Bookmark, 
-  RefreshCw, X, Shield, Play, Video, FileText, ArrowLeft, Star, MapPin, Menu
+  RefreshCw, X, Shield, Play, Video, FileText, ArrowLeft, Star, MapPin, Menu,
+  Compass, Phone, Mail, Briefcase
 } from 'lucide-react';
 import logo from '../../assets/logo.png';
 import logoText from '../../assets/logo-text.png';
 import noPropertiesImg from '../../assets/no-properties.png';
+import hero1 from '../../assets/hero/1.jpg';
+import hero2 from '../../assets/hero/2.jpg';
+import hero3 from '../../assets/hero/3.jpg';
+import hero4 from '../../assets/hero/4.jpg';
+import hero5 from '../../assets/hero/5.jpg';
+
+const getCleanIframeUrl = (url?: string) => {
+  if (!url) return '';
+  if (url.includes('kuula.co')) {
+    const baseUrl = url.split('?')[0];
+    return `${baseUrl}?fs=0&vr=0&zoom=0&sd=1&info=0&logo=-1&thumbs=0`;
+  }
+  return url;
+};
 
 const MobilePropertyCard = ({ p, vertical = false, isHidden = false }: { p: Property, vertical?: boolean, isHidden?: boolean }) => {
   const navigate = useNavigate();
   return (
     <div
       onClick={() => navigate(`/properties/${p.id}`)}
-      className={`relative bg-white shadow-md border border-gray-200 rounded-2xl overflow-hidden shrink-0 flex ${vertical ? 'flex-col w-full' : 'flex-col w-64'} cursor-pointer !p-0 ${isHidden ? 'hidden' : ''}`}
+      className={`relative bg-white shadow-md border border-gray-200 rounded-2xl overflow-hidden shrink-0 flex ${vertical ? 'flex-col w-full aspect-video' : 'flex-col w-[340px] sm:w-[400px] aspect-video'} cursor-pointer !p-0 ${isHidden ? 'hidden' : ''}`}
     >
-      <div className={`relative ${vertical ? 'h-48' : 'h-36'} bg-gray-100 overflow-hidden`}>
+      <div className="relative h-[75%] bg-gray-100 overflow-hidden shrink-0">
         {p.threeSixtyImageUrl ? (
           <>
-            <iframe src={p.threeSixtyImageUrl} style={{ width: '117.64%', height: '117.64%', border: 'none', position: 'absolute', top: 0, left: 0 }} className="pointer-events-none" />
+            <iframe src={getCleanIframeUrl(p.threeSixtyImageUrl)} style={{ width: 'calc(100% + 55px)', height: 'calc(100% + 45px)', border: 'none', position: 'absolute', top: 0, left: 0 }} className="pointer-events-none" />
             <div className="absolute top-2 left-2 flex items-center gap-1 bg-white/90 px-2 py-0.5 rounded-full z-10 shadow-sm">
               <span className="w-1.5 h-1.5 bg-accent-500 rounded-full animate-ping" />
               <span className="text-gray-900 text-[8px] font-bold">360° LIVE</span>
@@ -43,17 +58,27 @@ const MobilePropertyCard = ({ p, vertical = false, isHidden = false }: { p: Prop
             <MapIcon className="w-8 h-8 text-gray-300" />
           </div>
         )}
-        <div className="absolute bottom-2 left-2 right-2 z-10 flex justify-between items-end pointer-events-none">
-            <Chip label={p.category} color="primary" size="xs" />
-            <StatusBadge status={p.status} size="sm" />
+        
+        {/* Verified Badge - Top Right Corner */}
+        {p.status === 'APPROVED' && (
+          <div className="absolute top-0 right-0 bg-emerald-500 text-black px-3 py-1 rounded-bl-xl z-10 shadow-sm">
+             <span className="text-[10px] font-black uppercase tracking-wider">Verified</span>
+          </div>
+        )}
+
+        {/* Category Badge - Bottom Left Corner */}
+        <div className="absolute bottom-0 left-0 bg-white text-gray-900 px-4 py-1 rounded-tr-xl z-10 shadow-sm border-t border-r border-gray-200">
+             <span className="text-[10px] font-black uppercase tracking-wider">{p.category}</span>
         </div>
       </div>
-      <div className="p-4 flex flex-col gap-2">
-        <h3 className="text-gray-900 font-semibold text-sm truncate">{p.title}</h3>
-        <p className="text-gray-500 text-xs flex items-center gap-1 truncate"><MapPin className="w-3 h-3 shrink-0"/> {p.village}, {p.district}</p>
-        <div className="flex items-center justify-between mt-2 pt-2 border-t border-gray-100">
-          <p className="text-gray-900 font-bold text-sm">₹{p.price?.toLocaleString('en-IN')}</p>
-          <p className="text-gray-400 text-xs">{p.area} acres</p>
+      <div className="h-[25%] px-3 flex flex-col justify-center bg-white z-20">
+        <div className="flex items-center justify-between">
+           <h3 className="text-gray-900 font-bold text-sm truncate pr-2">{p.title}</h3>
+           <p className="text-primary-600 font-bold text-sm shrink-0">₹{p.price?.toLocaleString('en-IN')}</p>
+        </div>
+        <div className="flex items-center justify-between mt-0.5">
+           <p className="text-gray-500 text-[10px] flex items-center gap-1 truncate"><MapPin className="w-2.5 h-2.5 shrink-0"/> {p.village}, {p.district}</p>
+           <p className="text-gray-400 text-[10px] font-semibold shrink-0">{p.area} acres</p>
         </div>
       </div>
     </div>
@@ -62,7 +87,7 @@ const MobilePropertyCard = ({ p, vertical = false, isHidden = false }: { p: Prop
 
 export const BuyerDashboard = () => {
   const navigate = useNavigate();
-  const [viewTab, setViewTab] = useState<'home' | 'map' | 'chat' | 'wishlist' | 'schedule' | 'settings'>('home');
+  const [viewTab, setViewTab] = useState<'home' | 'explore' | 'map' | 'chat' | 'wishlist' | 'schedule' | 'settings'>('home');
   const [listMode, setListMode] = useState<'list' | 'map'>('list');
 
   const [properties, setProperties] = useState<Property[]>([]);
@@ -88,27 +113,16 @@ export const BuyerDashboard = () => {
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
 
   const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
-    const currentScrollY = e.currentTarget.scrollTop;
-    if (currentScrollY <= 0) {
-      setIsNavVisible(true);
-      setLastScrollY(0);
-      return;
-    }
-    if (currentScrollY > lastScrollY + 10) {
-      setIsNavVisible(false);
-      setLastScrollY(currentScrollY);
-    } else if (currentScrollY < lastScrollY - 10) {
-      setIsNavVisible(true);
-      setLastScrollY(currentScrollY);
-    }
+    // Smart hiding disabled as per user request
+    setIsNavVisible(true);
   };
 
   const heroSlides = [
-    { title: 'AI-Powered Insights', subtitle: 'Get smart recommendations and answers for your land queries.', cta: 'Ask AI', image: 'https://i.ibb.co/1Y111NdG/ai.png' },
-    { title: 'Explore in 360°', subtitle: 'Experience properties virtually with our immersive LandLense technology.', cta: 'View 360°', image: 'https://i.ibb.co/xS14Sht7/lens.png' },
-    { title: 'Build Your Future', subtitle: 'Find the perfect plots for your next big construction project.', cta: 'Start Building', image: 'https://i.ibb.co/LWVw1BW/buld.png' },
-    { title: 'Interactive Mapping', subtitle: 'Discover properties easily with our advanced interactive map.', cta: 'Open Map', image: 'https://i.ibb.co/jPY8RxBB/map.png' },
-    { title: 'Secure & Verified', subtitle: 'Invest with confidence in 100% verified properties and clear titles.', cta: 'View Verified', image: 'https://i.ibb.co/jc8q9gm/security.png' }
+    { title: 'AI-Powered Insights', subtitle: 'Get smart recommendations and answers for your land queries.', cta: 'Ask AI', image: hero1 },
+    { title: 'Explore in 360°', subtitle: 'Experience properties virtually with our immersive LandLense technology.', cta: 'View 360°', image: hero2 },
+    { title: 'Build Your Future', subtitle: 'Find the perfect plots for your next big construction project.', cta: 'Start Building', image: hero3 },
+    { title: 'Interactive Mapping', subtitle: 'Discover properties easily with our advanced interactive map.', cta: 'Open Map', image: hero4 },
+    { title: 'Secure & Verified', subtitle: 'Invest with confidence in 100% verified properties and clear titles.', cta: 'View Verified', image: hero5 }
   ];
 
   useEffect(() => {
@@ -152,6 +166,8 @@ export const BuyerDashboard = () => {
     try {
       const { category, ...backendFilters } = currentFilters;
       let res = await propertyService.getProperties({ ...backendFilters, status: 'APPROVED' });
+      // Filter out properties containing Google Street View iframes
+      res = res.filter(p => !p.threeSixtyImageUrl?.includes('google.com/maps') && !p.threeSixtyImageUrl?.trim().toLowerCase().startsWith('<iframe'));
       if (userLocRef.current) res = sortPropertiesByLocation(res, userLocRef.current);
       setProperties(res);
     } catch {} finally { setLoading(false); }
@@ -243,7 +259,7 @@ export const BuyerDashboard = () => {
       {/* ── APP BAR ── */}
       <div 
         style={{ borderBottomLeftRadius: '25px', borderBottomRightRadius: '25px' }}
-        className={`absolute top-0 left-0 right-0 bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between z-40 shadow-sm transition-transform duration-300 ${isNavVisible ? 'translate-y-0' : '-translate-y-full'}`}
+        className="absolute top-0 left-0 right-0 bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between z-40 shadow-sm"
       >
         <div className="flex items-center gap-2">
           <img src={logo} alt="LandLense Logo" className="h-8 w-auto object-contain" />
@@ -261,9 +277,9 @@ export const BuyerDashboard = () => {
           <div className="relative">
             <button 
               onClick={() => setIsProfileMenuOpen(!isProfileMenuOpen)}
-              className="w-9 h-9 rounded-full bg-primary-600 flex items-center justify-center shadow-sm"
+              className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center border border-gray-200 hover:bg-gray-200 shadow-sm"
             >
-              <User className="w-5 h-5 text-white" />
+              <User className="w-4 h-4 text-gray-600" />
             </button>
             
             <AnimatePresence>
@@ -328,14 +344,14 @@ export const BuyerDashboard = () => {
                     >
                        {/* Background image stretched to cover full section */}
                        <div className="absolute inset-0 z-0 flex items-center justify-center overflow-hidden pointer-events-none">
-                         <img src={heroSlides[heroSlideIndex].image} alt="Hero Illustration" className="w-full h-full object-cover" />
+                         <img src={heroSlides[heroSlideIndex].image} alt="Hero Illustration" className="w-full h-full object-contain object-right" />
                        </div>
                        
                        {/* Overlay text over the full width */}
-                       <div className="w-full h-full flex flex-col justify-center relative z-10 p-4 pointer-events-none bg-gradient-to-r from-black/80 via-black/40 to-transparent">
-                          <h1 className="text-xl font-bold text-white mb-2 leading-tight drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)] max-w-[60%]" style={{ WebkitTextStroke: '0.5px black' }}>{heroSlides[heroSlideIndex].title}</h1>
-                          <p className="text-white text-[10px] mb-4 max-w-[55%] font-bold drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)]" style={{ WebkitTextStroke: '0.2px black' }}>{heroSlides[heroSlideIndex].subtitle}</p>
-                          <button className="pointer-events-auto group relative overflow-hidden bg-black text-white text-[11px] font-bold px-5 py-2.5 rounded-xl w-max transition-all duration-300 hover:bg-gray-800 active:scale-95 flex items-center gap-2 border border-white/20">
+                       <div className="w-full h-full flex flex-col justify-center relative z-10 p-5 pointer-events-none">
+                          <h1 className="text-xl font-bold text-slate-900 mb-2 leading-tight max-w-[60%]">{heroSlides[heroSlideIndex].title}</h1>
+                          <p className="text-emerald-600 text-[10.5px] mb-4 max-w-[55%] font-bold leading-relaxed">{heroSlides[heroSlideIndex].subtitle}</p>
+                          <button className="pointer-events-auto group relative overflow-hidden bg-blue-900 text-blue-50 text-[11px] font-bold px-5 py-2.5 rounded-xl w-max transition-all duration-300 hover:bg-blue-800 active:scale-95 flex items-center gap-2 shadow-sm shadow-blue-900/20">
                             <span className="relative z-10">{heroSlides[heroSlideIndex].cta}</span>
                             <ChevronRight className="w-3.5 h-3.5 relative z-10 transition-transform duration-300 group-hover:translate-x-1" />
                           </button>
@@ -360,11 +376,11 @@ export const BuyerDashboard = () => {
                   ].map(cat => {
                     const isActive = filters.category === cat.id;
                     return (
-                      <button key={cat.id} onClick={() => handleCategoryClick(cat.id)} className="flex flex-col items-center gap-2 w-full">
-                        <div className={`flex items-center justify-center transition-transform active:scale-95 mx-auto ${isActive ? 'scale-110 drop-shadow-[0_0_8px_rgba(56,189,248,0.5)]' : 'opacity-90'}`}>
-                           <img src={cat.image} alt={cat.label} className="w-[58px] h-[58px] object-contain drop-shadow-md" />
+                      <button key={cat.id} onClick={() => handleCategoryClick(cat.id)} className="flex flex-col items-center gap-3 w-full">
+                        <div className={`flex items-center justify-center transition-all duration-300 active:scale-95 mx-auto ${isActive ? 'scale-110 drop-shadow-[0_0_4px_rgba(0,0,0,1)]' : 'opacity-80'}`}>
+                           <img src={cat.image} alt={cat.label} className="w-[68px] h-[68px] object-contain transition-transform" />
                         </div>
-                        <span className={`text-[10px] font-semibold text-center leading-tight break-words w-full ${isActive ? 'text-primary-600' : 'text-gray-700'}`}>{cat.label}</span>
+                        <span className={`text-[10.5px] font-bold text-center leading-tight break-words w-full transition-colors ${isActive ? 'text-black' : 'text-gray-500'}`}>{cat.label}</span>
                       </button>
                     );
                   })}
@@ -390,7 +406,7 @@ export const BuyerDashboard = () => {
                 )}
                 {!loading && properties.slice(0, 5).filter(p => !filters.category || p.category === filters.category).length === 0 && (
                   <div className="py-8 flex flex-col items-center justify-center text-center px-4">
-                    <img src={noPropertiesImg} alt="No properties found" className="w-64 h-auto object-contain" />
+                    <img src={noPropertiesImg} alt="No properties found" className="w-64 h-auto object-contain drop-shadow-[0_0_2px_rgba(0,0,0,0.8)]" />
                   </div>
                 )}
               </div>
@@ -433,7 +449,11 @@ export const BuyerDashboard = () => {
                   {savedProperties.map(p => <MobilePropertyCard key={p.id} p={p} vertical={true} />)}
                 </div>
               ) : (
-                <EmptyState icon={<Bookmark className="w-12 h-12" />} title="Your wishlist is empty" description="Save properties you love to view them later." />
+                <div className="flex flex-col items-center justify-center py-16 text-center">
+                  <Bookmark className="w-12 h-12 text-gray-300 mb-4" />
+                  <h3 className="text-gray-900 font-semibold text-lg mb-1">Your wishlist is empty</h3>
+                  <p className="text-gray-500 text-sm">Save properties you love to view them later.</p>
+                </div>
               )}
             </motion.div>
           )}
@@ -459,7 +479,11 @@ export const BuyerDashboard = () => {
                   ))}
                 </div>
               ) : (
-                <EmptyState icon={<Calendar className="w-12 h-12" />} title="No upcoming visits" description="Schedule a site visit to view properties." />
+                <div className="flex flex-col items-center justify-center py-16 text-center">
+                  <Calendar className="w-12 h-12 text-gray-800 mb-4" />
+                  <h3 className="text-gray-900 font-semibold text-lg mb-1">No upcoming visits</h3>
+                  <p className="text-gray-500 text-sm">Schedule a site visit to view properties.</p>
+                </div>
               )}
             </motion.div>
           )}
@@ -470,42 +494,86 @@ export const BuyerDashboard = () => {
           {/* ── SETTINGS TAB ── */}
           {viewTab === 'settings' && (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="p-4">
-              <h1 className="text-xl font-bold text-gray-900 mb-6">Settings</h1>
+              <h1 className="text-xl font-bold text-gray-900 mb-6">Profile Settings</h1>
               
-              <div className="bg-white shadow-sm border border-gray-200 rounded-2xl p-4 flex items-center gap-4 mb-6">
-                 <div className="w-14 h-14 rounded-full bg-primary-600 flex items-center justify-center">
-                    <User className="w-6 h-6 text-white" />
-                 </div>
-                 <div className="flex-1">
-                   <h2 className="text-gray-900 font-bold">{currentUser?.firstName} {currentUser?.lastName}</h2>
-                   <p className="text-gray-500 text-xs">{currentUser?.email}</p>
-                 </div>
-                 <Button variant="ghost" size="xs">Edit</Button>
+              <div className="bg-white shadow-sm border border-gray-200 rounded-2xl p-4 mb-6">
+                 <h2 className="text-gray-900 font-bold text-lg leading-tight">{currentUser?.firstName} {currentUser?.lastName}</h2>
+                 <p className="text-gray-500 text-sm leading-tight">{currentUser?.email}</p>
               </div>
 
-              <div className="space-y-2 mb-6">
-                <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 ml-1">Account</h3>
-                {['Profile Information', 'Saved Addresses', 'Payment Methods'].map(item => (
-                  <button key={item} className="w-full p-4 bg-white border border-gray-200 rounded-xl flex items-center justify-between hover:bg-gray-50 transition-colors">
-                    <span className="text-sm font-semibold text-gray-900">{item}</span>
-                    <ChevronRight className="w-4 h-4 text-gray-400" />
-                  </button>
-                ))}
-              </div>
-
-              <div className="space-y-2">
-                <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 ml-1">Preferences</h3>
-                {['Notifications', 'Language & Region', 'Privacy & Security'].map(item => (
-                  <button key={item} className="w-full p-4 bg-white border border-gray-200 rounded-xl flex items-center justify-between hover:bg-gray-50 transition-colors">
-                    <span className="text-sm font-semibold text-gray-900">{item}</span>
-                    <ChevronRight className="w-4 h-4 text-gray-400" />
-                  </button>
-                ))}
+              <div className="space-y-3 mb-6">
+                <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 ml-1">Account Details</h3>
+                
+                {currentUser?.email && (
+                  <div className="w-full p-4 bg-white border border-gray-200 rounded-xl flex items-center gap-3">
+                    <Mail className="w-4 h-4 text-gray-400" />
+                    <div className="flex-1 text-left">
+                      <p className="text-[10px] text-gray-400 font-semibold uppercase">Email Address</p>
+                      <p className="text-sm font-semibold text-gray-900">{currentUser.email}</p>
+                    </div>
+                  </div>
+                )}
+                
+                {currentUser?.phoneNumber && (
+                  <div className="w-full p-4 bg-white border border-gray-200 rounded-xl flex items-center gap-3">
+                    <Phone className="w-4 h-4 text-gray-400" />
+                    <div className="flex-1 text-left">
+                      <p className="text-[10px] text-gray-400 font-semibold uppercase">Phone Number</p>
+                      <p className="text-sm font-semibold text-gray-900">{currentUser.phoneNumber}</p>
+                    </div>
+                  </div>
+                )}
+                
+                {currentUser?.role && (
+                  <div className="w-full p-4 bg-white border border-gray-200 rounded-xl flex items-center gap-3">
+                    <Briefcase className="w-4 h-4 text-gray-400" />
+                    <div className="flex-1 text-left">
+                      <p className="text-[10px] text-gray-400 font-semibold uppercase">Account Role</p>
+                      <p className="text-sm font-semibold text-gray-900 capitalize">{currentUser.role.toLowerCase()}</p>
+                    </div>
+                  </div>
+                )}
               </div>
 
               <button onClick={handleLogout} className="w-full mt-8 p-4 rounded-2xl bg-danger-500/10 border border-danger-500/20 text-danger-400 font-bold text-sm flex items-center justify-center gap-2 hover:bg-danger-500/20 transition-colors">
                 <LogOut className="w-4 h-4" /> Log Out
               </button>
+            </motion.div>
+          )}
+
+          {/* ── EXPLORE TAB ── */}
+          {viewTab === 'explore' && (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="p-4">
+              <h1 className="text-xl font-bold text-gray-900 mb-4">Explore</h1>
+              <div className="columns-2 gap-3 space-y-3 pb-24">
+                {properties.map((p, index) => (
+                  <div 
+                    key={p.id} 
+                    onClick={() => navigate(`/properties/${p.id}`)}
+                    className="break-inside-avoid relative rounded-2xl overflow-hidden shadow-sm border border-gray-200 bg-gray-100 cursor-pointer group"
+                    style={{ minHeight: index % 2 === 0 ? '160px' : '220px' }}
+                  >
+                    {p.threeSixtyImageUrl ? (
+                      <>
+                        <iframe src={getCleanIframeUrl(p.threeSixtyImageUrl)} style={{ width: 'calc(100% + 55px)', height: 'calc(100% + 45px)', border: 'none', position: 'absolute', top: 0, left: 0 }} className="pointer-events-none transition-transform duration-500 group-hover:scale-105" />
+                        <div className="absolute top-2 left-2 flex items-center gap-1 bg-white/90 px-2 py-0.5 rounded-full z-10 shadow-sm">
+                          <span className="w-1.5 h-1.5 bg-accent-500 rounded-full animate-ping" />
+                          <span className="text-gray-900 text-[8px] font-bold">360°</span>
+                        </div>
+                      </>
+                    ) : (
+                      <img 
+                        src={p.images?.[0]?.url || 'https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=400&q=80'} 
+                        alt={p.title} 
+                        className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                      />
+                    )}
+                    <div className="absolute bottom-0 left-0 right-0 h-[25%] bg-gradient-to-t from-white via-white/80 to-transparent flex flex-col justify-end p-3 pointer-events-none">
+                      <p className="text-gray-900 text-xs font-bold line-clamp-2">{p.title}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </motion.div>
           )}
 
@@ -627,18 +695,20 @@ export const BuyerDashboard = () => {
             setChatInput(`I have a question about property ${selectedProperty.propertyCode} - ${selectedProperty.title}: `);
           }
         }}
-        className={`fixed bottom-[68px] right-4 z-[55] w-14 h-14 !bg-blue-600 rounded-full shadow-[0_5px_20px_rgba(37,99,235,0.4)] flex items-center justify-center text-white hover:!bg-blue-500 transition-all duration-300 active:scale-95 ${isNavVisible ? 'translate-y-0 opacity-100' : 'translate-y-[150px] opacity-0'}`}
+        className={`fixed bottom-5 right-0 z-[55] w-14 h-14 !bg-blue-600 rounded-l-full rounded-r-none shadow-[0_5px_20px_rgba(37,99,235,0.4)] flex items-center justify-center text-white hover:!bg-blue-500 transition-all duration-500 active:scale-95 ${isNavVisible ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0'}`}
       >
-        <MessageSquare className="w-6 h-6" />
+        <MessageSquare className="w-6 h-6 mr-1" />
       </button>
 
       {/* ── FLOATING BOTTOM NAVIGATION BAR ── */}
-      <div className={`fixed bottom-5 left-1/2 -translate-x-1/2 w-max px-6 bg-white border border-gray-200 z-50 rounded-full shadow-[0_5px_30px_rgba(0,0,0,0.15)] transition-all duration-300 ${isNavVisible ? 'translate-y-0 opacity-100' : 'translate-y-20 opacity-0'}`}>
-        <div className="flex items-center justify-center gap-6 h-[60px]">
+      <div className={`fixed bottom-5 left-0 w-[calc(100%-72px)] pr-6 pl-4 bg-white border border-gray-200 border-l-0 z-50 rounded-r-full rounded-l-none shadow-[0_5px_30px_rgba(0,0,0,0.15)] transition-all duration-500 ${isNavVisible ? 'translate-x-0 opacity-100' : '-translate-x-full opacity-0'}`}>
+        <div className="flex items-center justify-between w-full h-[60px]">
           {[
             { id: 'home', icon: Home, label: 'Home' },
+            { id: 'explore', icon: Compass, label: 'Explore' },
             { id: 'map', icon: MapIcon, label: 'Map' },
-            { id: 'schedule', icon: Calendar, label: 'Visits' }
+            { id: 'schedule', icon: Calendar, label: 'Visits' },
+            { id: 'settings', icon: User, label: 'Profile' }
           ].map(item => {
              const Icon = item.icon;
              const isActive = viewTab === item.id;

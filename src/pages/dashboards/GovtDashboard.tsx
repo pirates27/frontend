@@ -281,7 +281,7 @@ export const GovtDashboard = () => {
       <motion.div
         initial={{ opacity: 0, x: 20 }}
         animate={{ opacity: 1, x: 0 }}
-        className="w-full lg:w-[420px] shrink-0 glass-card p-5 lg:sticky lg:top-4"
+        className="w-full lg:w-[500px] xl:w-[550px] shrink-0 glass-card p-5 lg:h-full lg:overflow-y-auto scrollbar-premium"
       >
         <div className="flex justify-between items-start border-b border-white/[0.06] pb-4 mb-4">
           <div>
@@ -292,6 +292,62 @@ export const GovtDashboard = () => {
             <X className="w-5 h-5" />
           </button>
         </div>
+
+        {/* Verification form (Moved to top) */}
+        {selectedProperty.status === 'PENDING_GOVT' && (
+          <div className="space-y-3 mb-6 pb-6 border-b border-white/[0.06]">
+            <h4 className="text-dark-400 text-[10px] font-semibold uppercase tracking-wider">Submit Verification Decision</h4>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setVerifyStatus('APPROVED')}
+                className={`flex-1 py-2 rounded-xl text-xs font-bold border transition-all ${verifyStatus === 'APPROVED' ? 'bg-accent-500/20 border-accent-500/40 text-accent-400' : 'bg-white/[0.03] border-white/10 text-dark-500'}`}
+              >
+                ✓ Approve
+              </button>
+              <button
+                onClick={() => setVerifyStatus('REJECTED')}
+                className={`flex-1 py-2 rounded-xl text-xs font-bold border transition-all ${verifyStatus === 'REJECTED' ? 'bg-danger-500/20 border-danger-500/40 text-danger-400' : 'bg-white/[0.03] border-white/10 text-dark-500'}`}
+              >
+                ✕ Reject
+              </button>
+            </div>
+            
+            {/* Quick Suggestions */}
+            <div className="flex flex-wrap gap-1.5 mt-1">
+              {(verifyStatus === 'APPROVED' 
+                ? ["Verified successfully. All documents clear.", "AI trust score is high, manual inspection passed.", "No objections, land boundaries align."]
+                : ["Ownership mismatch. Needs review.", "Land boundaries overlap with government property.", "Documents are suspicious. Forgery detected."]
+              ).map((msg, i) => (
+                <button
+                  key={i}
+                  onClick={() => setVerifyRemarks(prev => prev ? `${prev} ${msg}` : msg)}
+                  className="px-2 py-1 bg-white/[0.04] hover:bg-white/[0.08] rounded border border-white/[0.06] text-[9px] text-dark-300 hover:text-white transition-colors text-left leading-tight"
+                >
+                  + {msg}
+                </button>
+              ))}
+            </div>
+
+            <textarea
+              value={verifyRemarks}
+              onChange={e => setVerifyRemarks(e.target.value)}
+              placeholder="Official inspection remarks..."
+              rows={3}
+              className={`input-dark resize-none ${verifyError && !verifyRemarks.trim() ? '!border-danger-500/60' : ''}`}
+            />
+            {verifyError && !verifyRemarks.trim() && (
+              <p className="text-danger-400 text-[10px]">Remarks are required before submission.</p>
+            )}
+            <Button
+              variant={verifyStatus === 'APPROVED' ? 'accent' : 'danger'}
+              size="sm" fullWidth
+              loading={verifyLoading}
+              onClick={submitVerification}
+            >
+              Submit {verifyStatus} Decision
+            </Button>
+          </div>
+        )}
 
         {/* Action Bar (Re-verify) */}
         <div className="mb-5 flex items-center justify-between">
@@ -446,61 +502,7 @@ export const GovtDashboard = () => {
           </div>
         )}
 
-        {/* Verification form */}
-        {selectedProperty.status === 'PENDING_GOVT' && (
-          <div className="space-y-3">
-            <h4 className="text-dark-400 text-[10px] font-semibold uppercase tracking-wider">Submit Verification Decision</h4>
-            <div className="flex gap-2">
-              <button
-                onClick={() => setVerifyStatus('APPROVED')}
-                className={`flex-1 py-2 rounded-xl text-xs font-bold border transition-all ${verifyStatus === 'APPROVED' ? 'bg-accent-500/20 border-accent-500/40 text-accent-400' : 'bg-white/[0.03] border-white/10 text-dark-500'}`}
-              >
-                ✓ Approve
-              </button>
-              <button
-                onClick={() => setVerifyStatus('REJECTED')}
-                className={`flex-1 py-2 rounded-xl text-xs font-bold border transition-all ${verifyStatus === 'REJECTED' ? 'bg-danger-500/20 border-danger-500/40 text-danger-400' : 'bg-white/[0.03] border-white/10 text-dark-500'}`}
-              >
-                ✕ Reject
-              </button>
-            </div>
-            
-            {/* Quick Suggestions */}
-            <div className="flex flex-wrap gap-1.5 mt-1">
-              {(verifyStatus === 'APPROVED' 
-                ? ["Verified successfully. All documents clear.", "AI trust score is high, manual inspection passed.", "No objections, land boundaries align."]
-                : ["Ownership mismatch. Needs review.", "Land boundaries overlap with government property.", "Documents are suspicious. Forgery detected."]
-              ).map((msg, i) => (
-                <button
-                  key={i}
-                  onClick={() => setVerifyRemarks(prev => prev ? `${prev} ${msg}` : msg)}
-                  className="px-2 py-1 bg-white/[0.04] hover:bg-white/[0.08] rounded border border-white/[0.06] text-[9px] text-dark-300 hover:text-white transition-colors text-left leading-tight"
-                >
-                  + {msg}
-                </button>
-              ))}
-            </div>
 
-            <textarea
-              value={verifyRemarks}
-              onChange={e => setVerifyRemarks(e.target.value)}
-              placeholder="Official inspection remarks..."
-              rows={3}
-              className={`input-dark resize-none ${verifyError && !verifyRemarks.trim() ? '!border-danger-500/60' : ''}`}
-            />
-            {verifyError && !verifyRemarks.trim() && (
-              <p className="text-danger-400 text-[10px]">Remarks are required before submission.</p>
-            )}
-            <Button
-              variant={verifyStatus === 'APPROVED' ? 'accent' : 'danger'}
-              size="sm" fullWidth
-              loading={verifyLoading}
-              onClick={submitVerification}
-            >
-              Submit {verifyStatus} Decision
-            </Button>
-          </div>
-        )}
       </motion.div>
     );
   };
@@ -557,8 +559,8 @@ export const GovtDashboard = () => {
             <Button variant="glass" size="sm" icon={<RefreshCw className="w-3.5 h-3.5" />} onClick={loadData}>Refresh</Button>
           </div>
 
-          <div className="flex flex-col lg:flex-row gap-5 items-start">
-            <div className={`w-full ${selectedProperty ? 'lg:w-[55%]' : 'w-full'}`}>
+          <div className="flex flex-col lg:flex-row gap-5 items-start lg:h-[calc(100vh-160px)]">
+            <div className={`w-full ${selectedProperty ? 'lg:flex-1' : 'w-full'} lg:h-full lg:overflow-y-auto lg:pr-2 scrollbar-premium`}>
               {pendingProperties.length > 0 ? (
                 <div className={`grid gap-4 ${selectedProperty ? 'grid-cols-1 xl:grid-cols-2' : 'grid-cols-1 sm:grid-cols-2 xl:grid-cols-3'}`}>
                   {pendingProperties.map(p => (

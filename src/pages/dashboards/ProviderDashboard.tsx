@@ -352,11 +352,11 @@ export const ProviderDashboard = () => {
                     <div
                       key={p.id}
                       onClick={() => selectProperty(p)}
-                      className={`glass-card overflow-hidden flex flex-col cursor-pointer transition-all duration-200 hover:-translate-y-0.5 !p-0
+                      className={`glass-card overflow-hidden flex flex-col h-[320px] cursor-pointer transition-all duration-200 hover:-translate-y-0.5 !p-0
                         ${selectedProperty?.id === p.id ? '!border-primary-500/40 shadow-[0_0_20px_rgba(37,99,235,0.15)]' : ''}`}
                     >
                       {/* Thumbnail */}
-                      <div className="relative h-36 bg-dark-800 shrink-0 overflow-hidden">
+                      <div className="relative h-[75%] bg-dark-800 shrink-0 overflow-hidden">
                         {p.threeSixtyImageUrl ? (
                           <>
                             <iframe src={p.threeSixtyImageUrl} style={{ width: '117.64%', height: '117.64%', border: 'none', position: 'absolute', top: 0, left: 0 }} className="pointer-events-none" />

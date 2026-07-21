@@ -11,6 +11,7 @@ export const Login = () => {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [videoFinished, setVideoFinished] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -57,35 +58,33 @@ export const Login = () => {
       <video 
         src={slashVideo}
         autoPlay
-        loop
         muted
         playsInline
-        className="hidden md:block absolute inset-0 w-full h-full object-cover z-0 opacity-60"
+        onEnded={() => setVideoFinished(true)}
+        className={`hidden md:block absolute inset-0 w-full h-full object-cover z-0 transition-opacity duration-1000 ${videoFinished ? 'opacity-0' : 'opacity-60'}`}
       />
 
       {/* Mobile Background Video */}
       <video 
         src={mobSplashVideo}
         autoPlay
-        loop
         muted
         playsInline
-        className="block md:hidden absolute inset-0 w-full h-full object-cover z-0 opacity-60"
+        onEnded={() => setVideoFinished(true)}
+        className={`block md:hidden absolute inset-0 w-full h-full object-cover z-0 transition-opacity duration-1000 ${videoFinished ? 'opacity-0' : 'opacity-60'}`}
       />
 
-      {/* Decorative Image: Bottom Left */}
+      {/* Decorative Images */}
       <img 
         src="https://i.ibb.co/0yYZhMN0/f013f5e9-2f96-4f07-8dae-5d60087d250e.jpg"
         alt="Land aerial view"
-        className="md:hidden absolute bottom-0 left-0 w-40 sm:w-[32rem] object-contain pointer-events-none z-0"
+        className={`md:hidden absolute bottom-0 left-0 w-40 sm:w-[32rem] object-contain pointer-events-none z-0 transition-opacity duration-1000 ${videoFinished ? 'opacity-100' : 'opacity-0'}`}
         style={{ WebkitMaskImage: 'linear-gradient(to top right, black 60%, transparent 100%)', maskImage: 'linear-gradient(to top right, black 60%, transparent 100%)' }}
       />
-
-      {/* Decorative Image: Top Right */}
       <img 
         src="https://i.ibb.co/ccmGDYJT/5ea71be8-b3a8-4cc7-84c6-ec15a7d6b37d.jpg"
         alt="Land scenery"
-        className="md:hidden absolute top-0 right-0 w-40 sm:w-[32rem] object-contain pointer-events-none z-0"
+        className={`md:hidden absolute top-0 right-0 w-40 sm:w-[32rem] object-contain pointer-events-none z-0 transition-opacity duration-1000 ${videoFinished ? 'opacity-100' : 'opacity-0'}`}
         style={{ WebkitMaskImage: 'linear-gradient(to bottom left, black 60%, transparent 100%)', maskImage: 'linear-gradient(to bottom left, black 60%, transparent 100%)' }}
       />
 

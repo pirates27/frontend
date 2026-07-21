@@ -263,6 +263,37 @@ export const Map: React.FC<MapProps> = ({
       setLoading(false);
       map.resize();
 
+      try {
+        const layers = map.getStyle().layers;
+        const labelLayerId = layers?.find(
+          (layer) => layer.type === 'symbol' && layer.layout && layer.layout['text-field']
+        )?.id;
+
+        map.addLayer(
+          {
+            'id': 'add-3d-buildings',
+            'source': 'composite',
+            'source-layer': 'building',
+            'filter': ['==', 'extrude', 'true'],
+            'type': 'fill-extrusion',
+            'minzoom': 15,
+            'paint': {
+              'fill-extrusion-color': '#e5e7eb',
+              'fill-extrusion-height': [
+                'interpolate', ['linear'], ['zoom'], 15, 0, 15.05, ['get', 'height']
+              ],
+              'fill-extrusion-base': [
+                'interpolate', ['linear'], ['zoom'], 15, 0, 15.05, ['get', 'min_height']
+              ],
+              'fill-extrusion-opacity': 0.6
+            }
+          },
+          labelLayerId
+        );
+      } catch (e) {
+        // Safe to ignore if composite source doesn't support 3D
+      }
+
       if (mode === 'view') {
         setTimeout(() => {
           geolocate.trigger();
@@ -466,7 +497,7 @@ export const Map: React.FC<MapProps> = ({
   };
 
   return (
-    <div className={`relative w-full h-full min-h-[350px] rounded-2xl overflow-hidden border border-white/10 shadow-lg ${className}`}>
+    <div className={`relative w-full h-full min-h-[350px] rounded-2xl overflow-hidden border-2 border-black shadow-lg ${className}`}>
       <div ref={mapContainer} className="w-full h-full absolute inset-0"></div>
 
       {loading && (
@@ -523,13 +554,6 @@ export const Map: React.FC<MapProps> = ({
         </div>
       )}
 
-      <button 
-        onClick={toggleStyle}
-        className="absolute bottom-4 left-4 glass-card !bg-dark-950/85 hover:!bg-white/[0.08] text-white font-semibold text-xs px-3 py-2 rounded-xl shadow-md border border-white/10 transition z-40 flex items-center gap-1.5 backdrop-blur-xs"
-      >
-        <span className={`w-2 h-2 rounded-full ${isSatellite ? 'bg-cyan-400' : 'bg-accent-400 animate-pulse'}`}></span>
-        {isSatellite ? 'Street View' : 'Satellite View'}
-      </button>
     </div>
   );
 };

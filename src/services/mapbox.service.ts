@@ -4,8 +4,58 @@ import type { Property } from '../models/property.models';
 
 const getMapboxConfig = () => ({
   accessToken: import.meta.env.VITE_MAPBOX_ACCESS_TOKEN || '',
-  style: import.meta.env.VITE_MAPBOX_STYLE || 'mapbox://styles/mapbox/satellite-streets-v12'
+  style: import.meta.env.VITE_MAPBOX_STYLE || 'mapbox://styles/mapbox/streets-v12'
 });
+
+class ThreeDControl {
+  private _map: mapboxgl.Map | undefined;
+  private _container: HTMLDivElement | undefined;
+  private _btn: HTMLButtonElement | undefined;
+  private _updateText: () => void = () => {};
+
+  onAdd(map: mapboxgl.Map) {
+    this._map = map;
+    this._container = document.createElement('div');
+    this._container.className = 'mapboxgl-ctrl mapboxgl-ctrl-group';
+    
+    this._btn = document.createElement('button');
+    this._btn.type = 'button';
+    this._btn.textContent = '3D';
+    this._btn.style.fontWeight = 'bold';
+    this._btn.style.fontSize = '11px';
+    this._btn.style.width = '29px';
+    this._btn.style.height = '29px';
+    this._btn.style.fontFamily = 'inherit';
+    this._btn.title = 'Toggle 3D View';
+    
+    this._updateText = () => {
+      if (this._btn && this._map) {
+        this._btn.textContent = this._map.getPitch() > 0 ? '2D' : '3D';
+      }
+    };
+    
+    map.on('pitchend', this._updateText);
+
+    this._btn.onclick = () => {
+      if (!this._map) return;
+      const is3D = this._map.getPitch() > 0;
+      this._map.easeTo({ pitch: is3D ? 0 : 60, bearing: is3D ? 0 : -17.6, duration: 1000 });
+    };
+
+    this._container.appendChild(this._btn);
+    return this._container;
+  }
+
+  onRemove() {
+    if (this._map) {
+      this._map.off('pitchend', this._updateText);
+    }
+    if (this._container && this._container.parentNode) {
+      this._container.parentNode.removeChild(this._container);
+    }
+    this._map = undefined;
+  }
+}
 
 export const mapboxService = {
   initializeMap: (container: string | HTMLElement, center: [number, number] = [80.4365, 16.3067], zoom = 10): mapboxgl.Map => {
@@ -16,14 +66,13 @@ export const mapboxService = {
       container,
       style: config.style,
       center,
-      zoom
+      zoom,
+      pitch: 0,
+      bearing: 0
     });
 
     mapInstance.addControl(new mapboxgl.NavigationControl(), 'top-right');
-    mapInstance.addControl(new mapboxgl.GeolocateControl({
-      positionOptions: { enableHighAccuracy: true },
-      trackUserLocation: true
-    }), 'top-right');
+    mapInstance.addControl(new ThreeDControl(), 'top-right');
 
     return mapInstance;
   },
