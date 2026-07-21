@@ -178,5 +178,49 @@ stateDiagram-v2
     REJECTED --> [*]
 ```
 
+### 💡 AI Price Estimation Flow Diagram
+This sequence diagram illustrates how the backend AI Price Estimation service processes valuation requests using survey coordinates, historical market rates, and GIS benchmarks.
+
+```mermaid
+sequenceDiagram
+    participant User as Buyer / Provider
+    participant React as React Frontend
+    participant Gateway as AWS CloudFront / ALB
+    participant AI as Spring Boot AI Engine
+    participant DB as Hostinger MySQL DB
+
+    User->>React: Input Survey No, Area & Coordinates
+    React->>Gateway: POST /api/ai/estimate-price
+    Gateway->>AI: Forward Valuation Request
+    AI->>DB: Fetch Local Historical Sales & Base Govt Rates
+    DB-->>AI: Return Comparative Benchmark Data
+    AI->>AI: Execute ML Valuation Model (Base Price * GIS Multipliers)
+    AI-->>Gateway: Return Estimated Range, Price/SqFt & Confidence Score
+    Gateway-->>React: JSON Response Payload
+    React-->>User: Render Interactive Valuation Breakdown
+```
+
+### 🛠️ System Maintenance & Health Lifecycle
+Operational maintenance workflow ensuring 24/7 service availability, zero-downtime rolling deployments, health monitoring, and automated backups.
+
+```mermaid
+flowchart TD
+    subgraph Monitoring [Continuous Monitoring & Health]
+        CW[AWS CloudWatch Metrics] -->|Poll Health Endpoint| ECS[ECS Fargate Tasks]
+        ALB[Application Load Balancer] -->|HTTP Health Checks| ECS
+    end
+
+    subgraph Maintenance [Maintenance & Rolling Deployments]
+        DEV[Developer Push] -->|Build & Push Docker Image| ECR[AWS ECR]
+        ECR -->|Trigger Rolling Deployment| ECS
+        ECS -->|Drain & Terminate| OLD[Old Container Tasks]
+    end
+
+    subgraph DBMaintenance [Database Maintenance & Backups]
+        DB[(Hostinger MySQL DB)] -->|Daily Automated Snapshot| BackupStorage[S3 Backup Archive]
+        DB -->|Scheduled Analytics Pruning| LogCleanup[Daily Analytics Task]
+    end
+```
+
 ---
 *Built as part of a modernization migration from Angular to React + Vite. The migration is fully complete, porting all dashboards, UI elements, and API integrations with exact fidelity.*
