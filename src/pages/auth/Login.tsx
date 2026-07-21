@@ -89,7 +89,7 @@ export const Login = () => {
       />
 
       {/* Glass Login Card */}
-      <div className="w-full max-w-md p-8 glass-card-dark rounded-2xl shadow-2xl relative z-10 animate-slide-up border border-slate-800/60">
+      <div className={`w-full max-w-md p-8 glass-card-dark rounded-2xl shadow-2xl relative z-10 border border-slate-800/60 transition-all duration-1000 delay-300 ${videoFinished ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8 pointer-events-none'}`}>
         
         {/* Logo Header */}
         <div className="text-center mb-8">

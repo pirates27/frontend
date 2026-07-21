@@ -63,4 +63,114 @@ An AI-powered government land verification portal designed to prevent real estat
 Please ensure all pull requests pass TypeScript compilation (`npm run build`) before submitting.
 
 ---
+
+## ☁️ AWS Integration & Deployment Architecture
+
+LandLens uses a highly available, decoupled AWS architecture. The frontend is served globally via CloudFront CDN, while API requests are securely proxied to the backend running in private subnets on ECS Fargate.
+
+```mermaid
+graph TD
+    Client((Client / Browser))
+    
+    subgraph Frontend [AWS Edge & Storage]
+        CF[Amazon CloudFront CDN]
+        S3[Amazon S3 Bucket<br>Static Assets]
+    end
+    
+    subgraph Backend VPC [AWS VPC - ap-south-1]
+        ALB[Application Load Balancer]
+        
+        subgraph Private Subnets
+            ECS[ECS Fargate Tasks<br>Spring Boot API]
+        end
+        
+        NAT[NAT Gateway]
+    end
+    
+    DB[(Hostinger Remote MySQL)]
+
+    Client -->|1. HTTPS Request| CF
+    CF -->|2. Fetch Static UI| S3
+    CF -->|3. Route /api/*| ALB
+    ALB -->|4. HTTP 8080| ECS
+    ECS -->|5. DB Queries| NAT
+    NAT -->|6. Egress IP| DB
+```
+
+### Deployment Workflows
+
+1. **Frontend Deployment**: 
+   - Managed via GitHub Actions (`.github/workflows/deploy.yml`) or AWS CLI.
+   - On push to `main`, the React app is built using `vite build`.
+   - The `dist/` output is synced to the S3 bucket (`landlens-frontend-256845883985`) using `aws s3 sync`.
+   - A CloudFront invalidation is triggered to serve the latest assets immediately.
+   
+2. **Backend Deployment**:
+   - Managed via PowerShell/Bash scripts (`deploy.ps1`).
+   - The Spring Boot app is compiled into a `.jar` file.
+   - A Docker image is built and pushed to Amazon Elastic Container Registry (ECR).
+   - The ECS Fargate service is updated to force a rolling deployment of the new container image behind the ALB.
+
+---
+
+## 🔄 System Flow & State Diagrams
+
+### API Request Flow Diagram
+How the frontend communicates with the backend APIs via CloudFront proxy.
+
+```mermaid
+sequenceDiagram
+    participant User as User / Browser
+    participant CloudFront as AWS CloudFront
+    participant ALB as AWS ALB
+    participant Spring as Spring Boot (ECS)
+    participant DB as MySQL DB
+
+    User->>CloudFront: 1. Navigate to https://dpyyh7torlown...
+    CloudFront-->>User: 2. Return React UI (from S3)
+    
+    User->>CloudFront: 3. POST /api/properties (JWT)
+    CloudFront->>ALB: 4. Proxy Request to Backend
+    ALB->>Spring: 5. Route to Target Group
+    
+    Spring->>Spring: 6. Validate JWT Token
+    Spring->>DB: 7. Insert Property Record
+    DB-->>Spring: 8. Return Confirmation
+    
+    Spring-->>ALB: 9. HTTP 201 Created
+    ALB-->>CloudFront: 10. HTTP 201 Created
+    CloudFront-->>User: 11. Display Success Message
+```
+
+### Property Verification State Machine
+This diagram illustrates the lifecycle of a property listing as it goes through the AI and Government verification workflow.
+
+```mermaid
+stateDiagram-v2
+    [*] --> UPLOADED : User Submits Land Details
+    
+    UPLOADED --> AI_VERIFICATION_PENDING : Trigger OCR & AI Checks
+    
+    state AI_VERIFICATION_PENDING {
+        [*] --> ExtractingDocuments
+        ExtractingDocuments --> CalculatingTrustScore
+        CalculatingTrustScore --> CheckingOverlap
+    }
+    
+    AI_VERIFICATION_PENDING --> AI_REJECTED : Low Trust Score / Fraud Detected
+    AI_VERIFICATION_PENDING --> PENDING_GOVT_AUDIT : AI Passed (Requires Manual Audit)
+    
+    PENDING_GOVT_AUDIT --> APPROVED : Inspector Approves
+    PENDING_GOVT_AUDIT --> REJECTED : Inspector Rejects
+    
+    APPROVED --> LIVE : Listed on Marketplace
+    LIVE --> DISPUTED : Community Reports Fraud
+    
+    DISPUTED --> PENDING_GOVT_AUDIT : Re-evaluation Triggered
+    
+    AI_REJECTED --> [*]
+    REJECTED --> [*]
+```
+
+---
 *Built as part of a modernization migration from Angular to React + Vite. The migration is fully complete, porting all dashboards, UI elements, and API integrations with exact fidelity.*
